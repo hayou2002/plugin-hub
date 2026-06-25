@@ -1,0 +1,30 @@
+{
+  "manifestVersion": 1,
+  "id": "plugin-hub",
+  "name": "插件抽屉",
+  "version": "1.0.0",
+  "description": "集中管理 Hana 顶栏插件标签：常用插件置顶显示，低频插件收进原生下拉菜单。增强补丁可让下拉菜单点击只临时打开插件，不自动置顶。",
+  "trust": "full-access",
+  "minAppVersion": "0.82.0",
+  "activationEvents": ["onStartup"],
+  "ui": {
+    "hostCapabilities": ["toast.show"]
+  },
+  "contributes": {
+    "page": {
+      "title": { "zh": "抽屉", "en": "Drawer" },
+      "route": "/page",
+      "icon": "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='3' width='7' height='7' rx='1'/><rect x='14' y='3' width='7' height='7' rx='1'/><rect x='3' y='14' width='7' height='7' rx='1'/><rect x='14' y='14' width='7' height='7' rx='1'/></svg>"
+    }
+  },
+  "dev": {
+    "scenarios": [
+      {
+        "id": "open-page",
+        "steps": [
+          { "openSurface": "/page" }
+        ]
+      }
+    ]
+  }
+}
