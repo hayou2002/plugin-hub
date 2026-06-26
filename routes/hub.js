@@ -1,5 +1,31 @@
 import fs from "node:fs";
 import path from "node:path";
+import { installEnhancementPatch, uninstallEnhancementPatch, readPatchStatus } from "./patcher.js";
+
+function getLayoutPath(ctx) {
+  return ctx?.dataDir ? path.join(ctx.dataDir, "drawer-layout.json") : null;
+}
+
+function readDrawerLayout(ctx) {
+  try {
+    const file = getLayoutPath(ctx);
+    if (!file || !fs.existsSync(file)) return { folders: [], rootItems: [] };
+    const data = JSON.parse(fs.readFileSync(file, "utf8") || "{}");
+    return {
+      folders: Array.isArray(data.folders) ? data.folders : [],
+      rootItems: Array.isArray(data.rootItems) ? data.rootItems : [],
+    };
+  } catch {
+    return { folders: [], rootItems: [] };
+  }
+}
+
+function writeDrawerLayout(ctx, layout) {
+  const file = getLayoutPath(ctx);
+  if (!file) return;
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, `${JSON.stringify(layout, null, 2)}\n`, "utf8");
+}
 
 /**
  * Plugin Hub - 插件中心路由
@@ -21,13 +47,7 @@ function getBaseUrl(c) {
 }
 
 function readRuntimeStatus(ctx) {
-  try {
-    const file = ctx?.dataDir ? path.join(ctx.dataDir, "runtime-status.json") : null;
-    if (!file || !fs.existsSync(file)) return {};
-    return JSON.parse(fs.readFileSync(file, "utf8") || "{}");
-  } catch {
-    return {};
-  }
+  return readPatchStatus(ctx);
 }
 
 function escapeHtml(value) {
@@ -90,6 +110,7 @@ export default function registerHubRoutes(app, ctx) {
         widgets,
         prefs: prefsRes || {},
         runtime: readRuntimeStatus(ctx),
+        layout: readDrawerLayout(ctx),
       });
     } catch (e) {
       ctx.log?.error?.("[PluginHub] /api/state ERROR: " + e.message);
@@ -97,6 +118,48 @@ export default function registerHubRoutes(app, ctx) {
         { error: e.message, pages: [], widgets: [], prefs: {}, runtime: readRuntimeStatus(ctx) },
         500
       );
+    }
+  });
+
+  /* ── 读取 / 保存抽屉文件夹布局 ── */
+  app.get("/api/layout", (c) => c.json(readDrawerLayout(ctx)));
+
+  app.put("/api/layout", async (c) => {
+    try {
+      const body = await c.req.json();
+      const folders = Array.isArray(body?.folders) ? body.folders : [];
+      const rootItems = Array.isArray(body?.rootItems) ? body.rootItems : [];
+      const clean = {
+        folders: folders.map((f) => ({
+          id: String(f.id || ""),
+          name: String(f.name || "未命名"),
+          items: Array.isArray(f.items) ? f.items.map(String) : [],
+        })).filter((f) => f.id),
+        rootItems: rootItems.map(String),
+      };
+      writeDrawerLayout(ctx, clean);
+      return c.json({ ok: true, ...clean });
+    } catch (e) {
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
+  /* ── 增强补丁：安装 / 卸载 ── */
+  app.get("/api/patch/status", (c) => c.json(readPatchStatus(ctx)));
+
+  app.post("/api/patch/install", (c) => {
+    try {
+      return c.json(installEnhancementPatch(ctx));
+    } catch (e) {
+      return c.json({ ok: false, error: e.message }, 500);
+    }
+  });
+
+  app.post("/api/patch/uninstall", (c) => {
+    try {
+      return c.json(uninstallEnhancementPatch(ctx));
+    } catch (e) {
+      return c.json({ ok: false, error: e.message }, 500);
     }
   });
 
@@ -140,6 +203,9 @@ function renderPage(ctx, token, theme) {
   const base = `/api/plugins/${pid}`;
   const stateUrl = `${base}/api/state${token ? `?token=${encodeURIComponent(token)}` : ""}`;
   const prefsUrl = `${base}/api/prefs${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+  const layoutUrl = `${base}/api/layout${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+  const patchInstallUrl = `${base}/api/patch/install${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+  const patchUninstallUrl = `${base}/api/patch/uninstall${token ? `?token=${encodeURIComponent(token)}` : ""}`;
 
   return `<!doctype html>
 <html lang="zh">
@@ -204,6 +270,26 @@ body {
   color: var(--muted);
   font-size: 12px;
 }
+.patch-panel {
+  margin-top: 8px;
+  padding: 9px 10px;
+  border: 1px solid #e3b341;
+  border-radius: 8px;
+  background: rgba(227,179,65,.1);
+  font-size: 12px;
+}
+.patch-panel strong { display: block; margin-bottom: 4px; }
+.patch-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.patch-actions button {
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--text);
+  padding: 0 10px;
+  cursor: pointer;
+}
+.patch-actions button.primary { border-color: var(--accent); color: var(--accent); }
 .stats { display: flex; gap: 8px; margin-top: 10px; }
 .stat {
   border: 1px solid var(--line);
@@ -247,6 +333,60 @@ body {
   color: var(--accent);
 }
 .toolbar-btn:hover { filter: brightness(0.98); }
+.folder-panel {
+  margin: -6px 0 16px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.folder-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.folder-head strong { font-size: 13px; }
+.folder-hint { color: var(--muted); font-size: 11px; }
+.folder-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.folder-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 12px;
+  cursor: default;
+  user-select: none;
+}
+.folder-chip.root { color: var(--muted); }
+.folder-name-input {
+  width: 74px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+}
+.folder-delete {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0 2px;
+}
+.folder-delete:hover { color: #d9534f; }
+.folder-select {
+  height: 24px;
+  max-width: 100px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 11px;
+  padding: 0 6px;
+}
 
 /* section */
 .section { margin-bottom: 16px; }
@@ -396,7 +536,15 @@ body {
   <header class="header">
     <h1>插件抽屉</h1>
     <p class="sub">设置哪些插件固定显示在顶栏；低频插件收进原生溢出菜单，保持顶栏清爽。</p>
-    <div id="runtime-notice" class="notice">已接入热刷新：切换置顶后会异步通知顶栏更新；若极少数情况下未同步，再点一次抽屉或刷新 Hana。</div>
+    <div id="runtime-notice" class="notice">默认安全模式：不修改 Hana 核心；点击下方按钮后才会安装原生下拉增强补丁。</div>
+    <div class="patch-panel">
+      <strong>原生下拉增强补丁</strong>
+      <div id="patch-status">状态读取中...</div>
+      <div class="patch-actions">
+        <button id="patch-install" class="primary" type="button">安装增强补丁</button>
+        <button id="patch-uninstall" type="button">卸载增强补丁</button>
+      </div>
+    </div>
     <div class="stats">
       <div class="stat"><strong id="stat-pages">0/0</strong><span>顶栏标签</span></div>
       <div class="stat"><strong id="stat-widgets">0/0</strong><span>侧栏面板</span></div>
@@ -405,8 +553,14 @@ body {
 
   <div class="toolbar">
     <input id="search" class="search" type="search" placeholder="搜索插件名称或描述...">
+    <button id="new-folder" class="toolbar-btn ghost" type="button">+ 新建文件夹</button>
     <button id="collect-all" class="toolbar-btn" type="button">全部收进抽屉</button>
     <button id="restore-all" class="toolbar-btn ghost" type="button">全部置顶</button>
+  </div>
+
+  <div class="folder-panel">
+    <div class="folder-head"><strong>下拉文件夹</strong><span class="folder-hint">右键文件夹可重命名 / 删除</span></div>
+    <div id="folder-chips" class="folder-chips"></div>
   </div>
 
   <section class="section">
@@ -425,7 +579,10 @@ body {
 <script>
 var STATE_URL = ${JSON.stringify(stateUrl)};
 var PREFS_URL = ${JSON.stringify(prefsUrl)};
-var state = { pages: [], widgets: [], prefs: { hiddenTabs: [], hiddenWidgets: [], tabOrder: [] }, runtime: {} };
+var LAYOUT_URL = ${JSON.stringify(layoutUrl)};
+var PATCH_INSTALL_URL = ${JSON.stringify(patchInstallUrl)};
+var PATCH_UNINSTALL_URL = ${JSON.stringify(patchUninstallUrl)};
+var state = { pages: [], widgets: [], prefs: { hiddenTabs: [], hiddenWidgets: [], tabOrder: [] }, runtime: {}, layout: { folders: [], rootItems: [] } };
 
 try { parent.postMessage({ type: "ready" }, "*"); } catch(e) {}
 
@@ -463,12 +620,26 @@ async function loadState() {
     if (!state.prefs) state.prefs = {};
     if (!Array.isArray(state.prefs.hiddenTabs)) state.prefs.hiddenTabs = [];
     if (!Array.isArray(state.prefs.hiddenWidgets)) state.prefs.hiddenWidgets = [];
+    getLayout();
     updateRuntimeNotice();
     render();
   } catch (e) {
     document.getElementById("pages-list").innerHTML = '<div class="msg error">加载失败: ' + escapeText(e.message) + "</div>";
     document.getElementById("widgets-list").innerHTML = "";
   }
+}
+
+async function saveLayout() {
+  var res = await fetch(LAYOUT_URL, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(state.layout || { folders: [], rootItems: [] })
+  });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  state.layout = await res.json();
+  delete state.layout.ok;
+  try { parent.postMessage({ type: "plugin-hub:drawer-layout", payload: state.layout }, "*"); } catch(e) {}
 }
 
 async function updatePrefs(prefs) {
@@ -549,27 +720,48 @@ function showToast(msg) {
   toastTimer = setTimeout(function() { el.classList.remove("show"); }, 2000);
 }
 
+function getLayout() {
+  if (!state.layout) state.layout = { folders: [], rootItems: [] };
+  if (!Array.isArray(state.layout.folders)) state.layout.folders = [];
+  if (!Array.isArray(state.layout.rootItems)) state.layout.rootItems = [];
+  return state.layout;
+}
+
+function folderOf(pluginId) {
+  var layout = getLayout();
+  for (var i = 0; i < layout.folders.length; i++) {
+    if ((layout.folders[i].items || []).includes(pluginId)) return layout.folders[i].id;
+  }
+  return "root";
+}
+
+function setPluginFolder(pluginId, folderId) {
+  var layout = getLayout();
+  layout.rootItems = (layout.rootItems || []).filter(function(id) { return id !== pluginId; });
+  layout.folders.forEach(function(f) { f.items = (f.items || []).filter(function(id) { return id !== pluginId; }); });
+  if (folderId === "root") layout.rootItems.push(pluginId);
+  else {
+    var f = layout.folders.find(function(x) { return x.id === folderId; });
+    if (f) {
+      if (!Array.isArray(f.items)) f.items = [];
+      f.items.push(pluginId);
+    }
+  }
+}
+
 function updateRuntimeNotice() {
   var el = document.getElementById("runtime-notice");
-  if (!el) return;
+  var status = document.getElementById("patch-status");
   var runtime = state.runtime || {};
-  if (runtime.restartRequired) {
-    el.textContent = "增强补丁已写入，重启 Hana 后下拉菜单点击插件将只临时打开、不自动置顶。卸载插件时会自动尝试恢复补丁。";
-    return;
+  if (el) el.textContent = "默认安全模式：插件不会自动修改 Hana；只有点击“安装增强补丁”才会备份并修改 app.asar。";
+  if (!status) return;
+  if (runtime.installed) {
+    status.textContent = runtime.restartRequired ? "已安装增强补丁，重启 Hana 后生效。" : "增强补丁已安装。";
+  } else if (runtime.backup) {
+    status.textContent = runtime.restartRequired ? "已恢复备份，重启 Hana 后恢复原生逻辑。" : "增强补丁未安装，存在可用备份。";
+  } else {
+    status.textContent = "增强补丁未安装。";
   }
-  if (runtime.patch === "already-patched") {
-    el.textContent = "增强补丁已生效：下拉菜单点击插件只临时打开，不会自动置顶。卸载插件时会自动尝试恢复补丁。";
-    return;
-  }
-  if (runtime.patch === "skipped") {
-    el.textContent = "抽屉功能可用；增强补丁未写入：" + (runtime.reason || "当前 Hana 版本未匹配到可补丁片段") + "。";
-    return;
-  }
-  if (runtime.patch === "failed") {
-    el.textContent = "抽屉功能可用；增强补丁失败：" + (runtime.reason || "未知错误") + "。";
-    return;
-  }
-  el.textContent = "已接入热刷新：切换置顶后会异步通知顶栏更新；若极少数情况下未同步，再点一次抽屉或刷新 Hana。";
 }
 
 /* ── render ── */
@@ -585,9 +777,35 @@ function render() {
   document.getElementById("stat-pages").textContent = visiblePages.length + "/" + pages.length;
   document.getElementById("stat-widgets").textContent = visibleWidgets.length + "/" + widgets.length;
 
+  renderFolders();
   renderList("pages-list", pages, hiddenTabs, "tab");
   renderList("widgets-list", widgets, hiddenWidgets, "widget");
   applySearch();
+}
+
+function renderFolders() {
+  var layout = getLayout();
+  var chips = ['<span class="folder-chip root">根目录 / 未分类</span>'];
+  layout.folders.forEach(function(f) {
+    chips.push('<span class="folder-chip" data-folder-id="' + escapeAttr(f.id) + '">'
+      + '<span>📂</span>'
+      + '<input class="folder-name-input" data-folder-id="' + escapeAttr(f.id) + '" value="' + escapeAttr(f.name) + '" title="改名后失焦保存">'
+      + '<button class="folder-delete" data-folder-id="' + escapeAttr(f.id) + '" title="删除文件夹" type="button">×</button>'
+      + '</span>');
+  });
+  document.getElementById("folder-chips").innerHTML = chips.join("");
+}
+
+function renderFolderSelect(pluginId) {
+  var layout = getLayout();
+  var current = folderOf(pluginId);
+  var html = '<select class="folder-select" data-plugin-id="' + escapeAttr(pluginId) + '">';
+  html += '<option value="root"' + (current === "root" ? " selected" : "") + '>根目录</option>';
+  layout.folders.forEach(function(f) {
+    html += '<option value="' + escapeAttr(f.id) + '"' + (current === f.id ? " selected" : "") + '>' + escapeText(f.name) + '</option>';
+  });
+  html += '</select>';
+  return html;
 }
 
 function renderList(containerId, items, hiddenList, type) {
@@ -611,6 +829,7 @@ function renderList(containerId, items, hiddenList, type) {
       + '<div class="item-name">' + escapeText(title) + "</div>"
       + '<div class="item-desc">' + escapeText(desc) + "</div>"
       + "</div>"
+      + (type === "tab" ? renderFolderSelect(item.pluginId) : "")
       + '<span class="item-status">' + (type === "tab" ? (isHidden ? "下拉" : "顶栏") : (isHidden ? "隐藏" : "侧栏")) + '</span>'
       + '<label class="switch">'
       + '<input type="checkbox" ' + (isHidden ? "" : "checked")
@@ -633,7 +852,21 @@ function applySearch() {
 }
 
 /* ── events (delegation) ── */
-document.addEventListener("change", function(e) {
+document.addEventListener("change", async function(e) {
+  if (e.target.matches(".folder-select")) {
+    var pid = e.target.dataset.pluginId;
+    var folderId = e.target.value || "root";
+    setPluginFolder(pid, folderId);
+    var needTopbarRefresh = !state.prefs.hiddenTabs.includes(pid);
+    if (needTopbarRefresh) state.prefs.hiddenTabs.push(pid);
+    render();
+    try {
+      await saveLayout();
+      if (needTopbarRefresh) await updatePrefs({ hiddenTabs: state.prefs.hiddenTabs });
+      showToast("已移动到" + (folderId === "root" ? "根目录" : "文件夹"));
+    } catch(err) { showToast("移动失败: " + err.message); }
+    return;
+  }
   if (!e.target.matches(".switch input[type=checkbox]")) return;
   var pluginId = e.target.dataset.pluginId;
   var type = e.target.dataset.type;
@@ -651,6 +884,68 @@ document.addEventListener("click", function(e) {
 });
 
 document.getElementById("search").addEventListener("input", applySearch);
+
+async function callPatchApi(url, successMessage) {
+  showToast("正在处理增强补丁，请稍候...");
+  var res = await fetch(url, { method: "POST", credentials: "include" });
+  var data = await res.json().catch(function() { return {}; });
+  if (!res.ok || data.ok === false) throw new Error(data.error || ("HTTP " + res.status));
+  state.runtime = data;
+  updateRuntimeNotice();
+  showToast(successMessage);
+}
+
+document.getElementById("patch-install").addEventListener("click", async function() {
+  try { await callPatchApi(PATCH_INSTALL_URL, "增强补丁已安装，请重启 Hana"); }
+  catch(e) { showToast("安装失败: " + e.message); }
+});
+
+document.getElementById("patch-uninstall").addEventListener("click", async function() {
+  try { await callPatchApi(PATCH_UNINSTALL_URL, "增强补丁已卸载，请重启 Hana"); }
+  catch(e) { showToast("卸载失败: " + e.message); }
+});
+
+document.getElementById("new-folder").addEventListener("click", async function() {
+  var layout = getLayout();
+  var n = layout.folders.length + 1;
+  layout.folders.push({ id: "f_" + Date.now().toString(36), name: "新文件夹" + n, items: [] });
+  render();
+  try { await saveLayout(); showToast("已创建文件夹"); }
+  catch(e) { showToast("创建失败: " + e.message); }
+});
+
+document.addEventListener("blur", async function(e) {
+  if (!e.target.matches(".folder-name-input")) return;
+  var folderId = e.target.dataset.folderId;
+  var layout = getLayout();
+  var folder = layout.folders.find(function(f) { return f.id === folderId; });
+  if (!folder) return;
+  var next = (e.target.value || "").trim() || "未命名";
+  if (folder.name === next) return;
+  folder.name = next;
+  render();
+  try { await saveLayout(); showToast("已重命名文件夹"); }
+  catch(err) { showToast("保存失败: " + err.message); }
+}, true);
+
+document.addEventListener("keydown", function(e) {
+  if (e.target.matches(".folder-name-input") && e.key === "Enter") e.target.blur();
+});
+
+document.addEventListener("click", async function(e) {
+  var del = e.target.closest(".folder-delete[data-folder-id]");
+  if (!del) return;
+  e.stopPropagation();
+  var folderId = del.dataset.folderId;
+  var layout = getLayout();
+  var folder = layout.folders.find(function(f) { return f.id === folderId; });
+  if (!folder) return;
+  layout.rootItems = (layout.rootItems || []).concat(folder.items || []);
+  layout.folders = layout.folders.filter(function(f) { return f.id !== folderId; });
+  render();
+  try { await saveLayout(); showToast("已删除文件夹，内部插件已移到根目录"); }
+  catch(err) { showToast("删除失败: " + err.message); }
+});
 
 document.getElementById("collect-all").addEventListener("click", async function() {
   var prev = state.prefs.hiddenTabs.slice();
