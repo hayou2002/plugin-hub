@@ -1,54 +1,65 @@
 # 插件抽屉（plugin-hub）
 
-Hana 插件抽屉。默认是安全模式；在页面中手动点击「安装增强补丁」后，才会切换到原生下拉增强模式。
+Hana 插件抽屉。默认安全模式管理顶栏插件、下拉收纳和文件夹分类；手动安装增强补丁后可获得原生下拉悬浮菜单。
+
+**性能**：CSS/JS 外部化 + 进程级缓存 + 同步骨架，点击秒开，无转圈。
 
 ## 两种模式
 
 ### 安全模式（默认）——hanako新版本可能失效。完整体验请安装增强补丁
 
-- 不修改 Hana 的 `app.asar`。
-- 不 patch `ChannelTabBar`。
-- 只在抽屉页面中管理插件。
-- 支持顶栏 / 下拉开关、文件夹分类、插件跳转。
-- 卸载插件不会留下 Hana 核心补丁。
+- 不修改 Hana `app.asar`，不对核心代码做任何改动
+- 只在抽屉页面中管理插件
+- 支持顶栏/下拉开关、文件夹分类、搜索、批量操作
+- 安装/卸载插件不留核心补丁
 
-### 原生下拉增强模式（手动安装）
+### 原生下拉增强（手动安装）
 
 在抽屉页面点击「安装增强补丁」后启用：
 
-- 安装前自动备份 Hana 的 `app.asar`。
-- 修改 Hana 原生顶栏下拉逻辑。
-- 支持下拉菜单悬浮打开。
-- 支持文件夹进入原生下拉，悬浮文件夹右侧弹出子菜单。
-- 点击下拉插件只打开，不自动置顶。
-- 安装/卸载增强补丁后都需要重启 Hana。
-
-如需恢复，在抽屉页面点击「卸载增强补丁」，插件会用备份恢复 `app.asar`。
+- 自动备份 `app.asar`
+- 下拉菜单悬浮打开，文件夹右侧弹出子菜单
+- 点击下拉插件只打开，不自动置顶
+- 支持文件夹分类进原生下拉
+- 安装/卸载后需重启 Hana
 
 ## 安装
 
-1. 下载 `plugin-hub-v1.1.1.zip`。
-2. 打开 Hana 插件管理界面。
-3. 把 zip 拖入插件管理界面安装。
-4. 重启或刷新 Hana。
-5. 顶栏出现「抽屉」后即可使用。
+1. 下载 [最新 Release](https://github.com/hayou2002/plugin-hub/releases/latest) 的 zip
+2. 打开 Hana → 插件管理
+3. 拖入 zip 安装，重启 Hana
 
-## 注意
+## 架构
 
-- 由于 Hana 当前 page 插件要求 full-access，本插件 manifest 需要 `trust: full-access`。
-- 默认安全模式不会修改 Hana 核心。
-- 原生下拉增强补丁会修改本机 `app.asar`，只建议理解风险后手动安装。
-- 如果出现异常，点击「卸载增强补丁」并重启 Hana；必要时手动用备份恢复。
-- ⚠️如果无法安装增强补丁给AI这段提示词，成功后再重启：现在我安装了一个插件抽屉插件，使用进阶功能需要使用补丁修改app.asar。但是现在点击安装返回装失败:app.asar not found。请你帮我安装一下。（注意：进阶功能会修改hanako文件。如果怕折腾坏就算了。已经坏了就用其他工具修复一下）
-
-## 包结构
-
-```txt
-plugin-hub/
-  manifest.json
-  index.js
-  README.md
-  routes/
-    hub.js
-    patcher.js
 ```
+plugin-hub/
+  manifest.json       # full-access, onStartup
+  index.js            # 生命周期
+  README.md
+  assets/
+    hub.css           # CSS 独立文件（模块级常量秒出）
+    hub.js            # JS 独立文件（DOM patching + 序列号防竞态）
+  routes/
+    hub.js            # 骨架路由 + 进程缓存 + API 代理
+    patcher.js        # asar 补丁引擎（版本锁定 + 完整性校验 + 互斥锁）
+```
+
+## 安全
+
+- 默认不修改核心，增强补丁需手动确认
+- 补丁安装前自动备份，可随时恢复
+- `@electron/asar` 版本锁定防供应链攻击
+- 打包后完整性校验，损坏即中止
+- 文件锁防并发，`try/finally` 清理
+- SVG icon DOMParser 白名单防 XSS
+
+## 注意事项
+
+- page 插件需 `trust: full-access`
+- 增强补丁修改 `app.asar`，理解风险后操作
+- 异常时点「卸载增强补丁」并重启
+
+## 兼容性
+
+- `minAppVersion`: 0.82.0
+- 动态适配 Hana 版本（自动匹配 ChannelTabBar 文件哈希）
