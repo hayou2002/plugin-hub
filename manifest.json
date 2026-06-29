@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "plugin-hub",
   "name": "插件抽屉",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Hana 插件抽屉：默认安全模式下管理顶栏插件、下拉收纳和文件夹分类；可在页面中手动安装/卸载原生下拉增强补丁。",
   "trust": "full-access",
   "minAppVersion": "0.82.0",
