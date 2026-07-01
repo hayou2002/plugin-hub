@@ -1,4 +1,4 @@
-﻿(function(){
+(function(){
 var C=window.__PLUGIN_HUB__;
 if(!C)return;
 var STATE_URL=C.stateUrl,PREFS_URL=C.prefsUrl,LAYOUT_URL=C.layoutUrl,PATCH_INSTALL_URL=C.patchInstallUrl,PATCH_UNINSTALL_URL=C.patchUninstallUrl,CACHE_KEY="plugin-hub:state-cache",state=C.state||{pages:[],widgets:[],prefs:{hiddenTabs:[],hiddenWidgets:[],tabOrder:[]},runtime:{},layout:{folders:[],rootItems:[]}};

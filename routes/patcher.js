@@ -3,6 +3,7 @@ import path from "node:path";
 import os from "node:os";
 import crypto from "node:crypto";
 import { execSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 const PATCH_STATUS = "patch-status.json";
 const PATCH_LOCK = "patch.lock";
@@ -122,8 +123,10 @@ function findAppAsar(ctx) {
   }
   if (process.env.LOCALAPPDATA) candidates.push(path.join(process.env.LOCALAPPDATA, "Programs", "HanaAgent", "resources", "app.asar"));
   if (process.argv?.[0]) searchAppAsarInTree(process.argv[0], candidates, checked);
+  if (process.cwd?.()) searchAppAsarInTree(process.cwd(), candidates, checked);
   if (ctx?.dataDir) searchAppAsarInTree(ctx.dataDir, candidates, checked);
   if (ctx?.pluginDir) searchAppAsarInTree(ctx.pluginDir, candidates, checked);
+  try { searchAppAsarInTree(fileURLToPath(import.meta.url), candidates, checked); } catch {}
   const programRoots = [
     process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, "Programs"),
     process.env.ProgramFiles,
@@ -149,17 +152,29 @@ function findAppAsar(ctx) {
     }
   }
   if (process.platform === "win32") {
+    const regScans = [
+      "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+      "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+      "HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+    ];
+    for (const rootKey of regScans) {
+      try {
+        const output = execSync(`reg query "${rootKey}" /s /f "Hana" /k 2>nul`, { encoding: "utf8", timeout: 5000, shell: "cmd.exe" });
+        if (output) {
+          const m = output.match(/InstallLocation\\s+REG_SZ\\s+(.+)/i);
+          if (m) candidates.push(path.join(m[1].trim(), "resources", "app.asar"));
+        }
+      } catch {}
+    }
     try {
-      const output = execSync(`reg query "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall" /s /f "Hana" /k 2>nul`, { encoding: "utf8", timeout: 5000, shell: "cmd.exe" });
-      if (output) {
-        const m = output.match(/InstallLocation\\s+REG_SZ\\s+(.+)/i);
-        if (m) candidates.push(path.join(m[1].trim(), "resources", "app.asar"));
+      const output = execSync("where HanaAgent 2>nul & where Hanako 2>nul", { encoding: "utf8", timeout: 3000, shell: "cmd.exe" });
+      if (output && output.trim()) {
+        for (const line of output.split("\n").map(s => s.trim()).filter(Boolean)) {
+          searchAppAsarInTree(path.dirname(line), candidates, checked, 3);
+        }
       }
     } catch {}
-    try {
-      const output = execSync("where HanaAgent 2>nul", { encoding: "utf8", timeout: 3000, shell: "cmd.exe" });
-      if (output && output.trim()) searchAppAsarInTree(path.dirname(output.trim()), candidates, checked, 3);
-    } catch {}
+    scanStartMenuShortcuts(candidates, checked);
   }
   if (process.platform === "linux") {
     for (const dir of ["/opt", "/usr/lib", "/usr/local/lib", "/usr/share"]) {
@@ -192,6 +207,43 @@ function searchAppAsarInTree(startPath, candidates, checked, depth) {
     }
     dir = path.dirname(dir);
   }
+}
+
+function scanStartMenuShortcuts(candidates, checked) {
+  if (process.platform !== "win32") return;
+  const dirs = [
+    path.join(process.env.APPDATA || "", "Microsoft", "Windows", "Start Menu", "Programs"),
+    path.join(process.env.ProgramData || "C:\\ProgramData", "Microsoft", "Windows", "Start Menu", "Programs"),
+  ];
+  for (const dir of dirs) {
+    walkShortcutDir(dir, candidates, checked);
+  }
+}
+
+function walkShortcutDir(dir, candidates, checked) {
+  let entries;
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+  for (const ent of entries) {
+    const full = path.join(dir, ent.name);
+    if (ent.isDirectory()) {
+      if (!/\.|node_modules/i.test(ent.name)) walkShortcutDir(full, candidates, checked);
+    } else if (ent.name.endsWith(".lnk")) {
+      resolveShortcut(full, candidates, checked);
+    }
+  }
+}
+
+function resolveShortcut(lnkPath, candidates, checked) {
+  try {
+    const safe = String(lnkPath).replace(/'/g, "''");
+    const cmd = `powershell -NoProfile -Command "$ws=New-Object -ComObject WScript.Shell;$sc=$ws.CreateShortcut('${safe}');Write-Output $sc.TargetPath" 2>nul`;
+    const output = execSync(cmd, { encoding: "utf8", timeout: 8000, shell: "cmd.exe" });
+    const target = (output || "").trim();
+    if (target) {
+      const targetDir = path.dirname(target);
+      searchAppAsarInTree(targetDir, candidates, checked, 4);
+    }
+  } catch {}
 }
 
 function runNpx(args, cwd) {
@@ -332,6 +384,34 @@ function collectDiagnostics(ctx, error) {
   };
 }
 
+function collectCandidatePaths(ctx) {
+  const candidates = [];
+  const checked = [];
+  if (process.env.HANA_APP_ASAR) checked.push(path.resolve(process.env.HANA_APP_ASAR));
+  if (process.resourcesPath) checked.push(path.join(process.resourcesPath, "app.asar"));
+  if (process.execPath) searchAppAsarInTree(process.execPath, candidates, checked);
+  if (process.argv?.[0]) searchAppAsarInTree(process.argv[0], candidates, checked);
+  if (process.cwd?.()) searchAppAsarInTree(process.cwd(), candidates, checked);
+  if (ctx?.dataDir) searchAppAsarInTree(ctx.dataDir, candidates, checked);
+  if (ctx?.pluginDir) searchAppAsarInTree(ctx.pluginDir, candidates, checked);
+  try { searchAppAsarInTree(fileURLToPath(import.meta.url), candidates, checked); } catch {}
+  const programRoots = [
+    process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, "Programs"),
+    process.env.ProgramFiles,
+    process.env["ProgramFiles(x86)"],
+    process.env.ProgramData && path.join(process.env.ProgramData, "Programs"),
+  ].filter(Boolean);
+  for (const root of programRoots) {
+    let entries;
+    try { entries = fs.readdirSync(root); } catch { continue; }
+    for (const name of entries) {
+      if (/hana|hanako/i.test(name)) checked.push(path.join(root, name, "resources", "app.asar"));
+    }
+  }
+  if (process.platform === "win32") scanStartMenuShortcuts(candidates, checked);
+  return checked.slice(0, 50);
+}
+
 export function getDiagnostics(ctx) {
   const diag = collectDiagnostics(ctx, null);
   try {
@@ -342,6 +422,7 @@ export function getDiagnostics(ctx) {
     diag.appAsarFound = false;
     diag.findError = e.message;
   }
+  diag.checkedPaths = collectCandidatePaths(ctx);
   return diag;
 }
 
@@ -378,9 +459,10 @@ export function installEnhancementPatch(ctx) {
     const assetsDir = path.join(work, "desktop", "dist-renderer", "assets");
     const channelJs = fs.readdirSync(assetsDir)
       .filter(name => name.startsWith("ChannelTabBar-") && name.endsWith(".js"))
-      .sort((a, b) => fs.statSync(path.join(assetsDir, b)).mtimeMs - fs.statSync(path.join(assetsDir, a)).mtimeMs);
+      .sort((a, b) => fs.statSync(path.join(assetsDir, b)).size - fs.statSync(path.join(assetsDir, a)).size);
     if (channelJs.length === 0) {
-      throw new Error("ChannelTabBar JS bundle not found in app.asar. Please report this version mismatch.");
+      const allFiles = fs.readdirSync(assetsDir).slice(0, 30).join(", ");
+      throw new Error(`ChannelTabBar JS not found. Available: ${allFiles}`);
     }
     const channelFile = path.join(assetsDir, channelJs[0]);
     patchChannelBundle(channelFile, ctx);
@@ -388,7 +470,7 @@ export function installEnhancementPatch(ctx) {
     // CSS 补丁
     const channelCss = fs.readdirSync(assetsDir)
       .filter(name => name.startsWith("ChannelTabBar-") && name.endsWith(".css"))
-      .sort((a, b) => fs.statSync(path.join(assetsDir, b)).mtimeMs - fs.statSync(path.join(assetsDir, a)).mtimeMs);
+      .sort((a, b) => fs.statSync(path.join(assetsDir, b)).size - fs.statSync(path.join(assetsDir, a)).size);
     if (channelCss.length > 0) {
       patchChannelCss(path.join(assetsDir, channelCss[0]), ctx);
     }
