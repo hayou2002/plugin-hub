@@ -107,6 +107,24 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 .msg.error { color:#c5372a }
 #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(60px); background:var(--text); color:var(--bg); padding:8px 18px; border-radius:8px; font-size:13px; opacity:0; transition:.25s; pointer-events:none; z-index:999 }
 #toast.show { opacity:1; transform:translateX(-50%) translateY(0) }
+
+/* AI 诊断对话框 */
+#ai-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.42);
+  display:none; align-items:center; justify-content:center; z-index:99999;
+}
+#ai-overlay.show { display:flex }
+.ai-modal { width:90%; max-width:520px; max-height:80vh; overflow-y:auto; background:var(--panel); border-radius:12px; box-shadow:0 12px 40px rgba(0,0,0,.2); padding:16px }
+.ai-modal h3 { font-size:15px; margin-bottom:4px }
+.ai-modal .ai-sub { color:var(--muted); font-size:12px; margin-bottom:10px }
+.ai-box { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px 10px; font-size:12px; max-height:120px; overflow-y:auto; white-space:pre-wrap; word-break:break-all; margin-bottom:10px; color:#c5372a }
+.ai-reply { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px; font-size:13px; max-height:280px; overflow-y:auto; white-space:pre-wrap; word-break:break-word; margin-bottom:10px; line-height:1.5 }
+.ai-reply.loading { color:var(--muted); font-style:italic }
+.ai-rows { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end }
+.ai-rows button { height:32px; border:1px solid var(--line); border-radius:8px; background:var(--panel); color:var(--text); padding:0 14px; font-size:12px; cursor:pointer }
+.ai-rows button.primary { border-color:var(--accent); background:var(--accent); color:#fff }
+.ai-rows button:disabled { opacity:.5; cursor:not-allowed }
+
 @media (max-width:600px) {
   .wrap { padding:14px 10px 24px }
   .stats { flex-wrap:wrap }

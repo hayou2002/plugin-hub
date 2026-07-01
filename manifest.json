@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "plugin-hub",
   "name": "鎻掍欢鎶藉眽",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "Hana 鎻掍欢鎶藉眽锛氶粯璁ゅ畨鍏ㄦā寮忎笅绠＄悊椤舵爮鎻掍欢銆佷笅鎷夋敹绾冲拰鏂囦欢澶瑰垎绫伙紱鐐瑰嚮瀹夎鎸夐挳鍚?AI 鑷姩瀹屾垚鍘熺敓涓嬫媺澧炲己琛ヤ竵瀹夎銆?,
   "trust": "full-access",
   "minAppVersion": "0.82.0",

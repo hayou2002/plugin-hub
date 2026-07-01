@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { installEnhancementPatch, uninstallEnhancementPatch, readPatchStatus } from "./patcher.js";
+import { installEnhancementPatch, uninstallEnhancementPatch, readPatchStatus, getDiagnostics } from "./patcher.js";
 
 const __fileDir = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.dirname(__fileDir);
@@ -177,6 +177,7 @@ window.__PLUGIN_HUB__ = {
   layoutUrl: ${JSON.stringify(`${base}/api/layout${token ? `?token=${encodeURIComponent(token)}` : ""}`)},
   patchInstallUrl: ${JSON.stringify(`${base}/api/patch/install${token ? `?token=${encodeURIComponent(token)}` : ""}`)},
   patchUninstallUrl: ${JSON.stringify(`${base}/api/patch/uninstall${token ? `?token=${encodeURIComponent(token)}` : ""}`)},
+  patchDiagUrl: ${JSON.stringify(`${base}/api/patch/diagnostics${token ? `?token=${encodeURIComponent(token)}` : ""}`)},
   state: ${JSON.stringify(initialState)}
 };
 </script>
@@ -277,6 +278,12 @@ window.__PLUGIN_HUB__ = {
       // 自动安装异常，返回错误让前端调用 agent tool
       return c.json({ ok: false, error: e.message, needAgent: true, method: "auto" }, 500);
     }
+  });
+
+  /* ── 环境诊断 ── */
+  app.get("/api/patch/diagnostics", (c) => {
+    try { return c.json(getDiagnostics(ctx)); }
+    catch (e) { return c.json({ error: e.message }, 500); }
   });
 
   /* ── 偏好代理 ── */
