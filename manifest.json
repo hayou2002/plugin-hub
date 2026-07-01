@@ -3,7 +3,7 @@
   "id": "plugin-hub",
   "name": "插件抽屉",
   "version": "1.2.0",
-  "description": "Hana 插件抽屉：默认安全模式下管理顶栏插件、下拉收纳和文件夹分类；可在页面中手动安装/卸载原生下拉增强补丁。",
+  "description": "Hana 插件抽屉：默认安全模式下管理顶栏插件、下拉收纳和文件夹分类；点击安装按钮后 AI 自动完成原生下拉增强补丁安装。",
   "trust": "full-access",
   "minAppVersion": "0.82.0",
   "activationEvents": ["onStartup"],

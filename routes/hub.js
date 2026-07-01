@@ -135,7 +135,10 @@ ${hc ? `<link rel="stylesheet" href="${esc(hc)}">` : ""}
     <div id="runtime-notice" class="notice">默认安全模式：不修改 Hana 核心；点击下方按钮后才会安装原生下拉增强补丁。</div>
     <div class="patch-panel">
       <strong>原生下拉增强补丁</strong>
-      <div id="patch-status">状态读取中...</div>
+      <div style="display:flex;gap:16px;align-items:center;">
+        <div id="patch-status" style="flex:1;">状态读取中...</div>
+        <div style="border-left:1px dashed var(--line,#ddd);padding-left:16px;font-size:13px;color:var(--muted,#666);">安装失败？复制下方提示词到聊天中，AI 帮你装：<div style="margin-top:4px;padding:6px 10px;background:var(--bg,#f5f5f5);border-radius:4px;font-family:monospace;font-size:12px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" onclick="navigator.clipboard.writeText('请帮我安装 plugin-hub 的增强补丁（抽屉下拉增强）').then(()=>this.textContent='✅ 已复制！')">请帮我安装 plugin-hub 的增强补丁（抽屉下拉增强）</div></div>
+      </div>
       <div class="patch-actions">
         <button id="patch-install" class="primary" type="button">安装增强补丁</button>
         <button id="patch-uninstall" type="button">卸载增强补丁</button>
@@ -256,6 +259,23 @@ window.__PLUGIN_HUB__ = {
       return c.json(result);
     } catch (e) {
       return c.json({ ok: false, error: e.message }, 500);
+    }
+  });
+
+  /* ── AI agent 兜底安装 ── */
+  app.post("/api/patch/agent-install", async (c) => {
+    try {
+      // 先尝试自动安装
+      const result = installEnhancementPatch(ctx);
+      if (result.ok) {
+        _runtimeCache = null;
+        return c.json({ ...result, method: "auto" });
+      }
+      // 自动安装失败，返回错误让前端调用 agent tool
+      return c.json({ ok: false, error: result.error || "自动安装失败", needAgent: true, method: "auto" }, 500);
+    } catch (e) {
+      // 自动安装异常，返回错误让前端调用 agent tool
+      return c.json({ ok: false, error: e.message, needAgent: true, method: "auto" }, 500);
     }
   });
 
