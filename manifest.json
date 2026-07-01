@@ -1,9 +1,9 @@
-{
+﻿{
   "manifestVersion": 1,
   "id": "plugin-hub",
-  "name": "插件抽屉",
-  "version": "1.2.0",
-  "description": "Hana 插件抽屉：默认安全模式下管理顶栏插件、下拉收纳和文件夹分类；点击安装按钮后 AI 自动完成原生下拉增强补丁安装。",
+  "name": "鎻掍欢鎶藉眽",
+  "version": "1.2.1",
+  "description": "Hana 鎻掍欢鎶藉眽锛氶粯璁ゅ畨鍏ㄦā寮忎笅绠＄悊椤舵爮鎻掍欢銆佷笅鎷夋敹绾冲拰鏂囦欢澶瑰垎绫伙紱鐐瑰嚮瀹夎鎸夐挳鍚?AI 鑷姩瀹屾垚鍘熺敓涓嬫媺澧炲己琛ヤ竵瀹夎銆?,
   "trust": "full-access",
   "minAppVersion": "0.82.0",
   "activationEvents": ["onStartup"],
@@ -12,7 +12,7 @@
   },
   "contributes": {
     "page": {
-      "title": { "zh": "抽屉", "en": "Drawer" },
+      "title": { "zh": "鎶藉眽", "en": "Drawer" },
       "route": "/page",
       "icon": "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='3' width='7' height='7' rx='1'/><rect x='14' y='3' width='7' height='7' rx='1'/><rect x='3' y='14' width='7' height='7' rx='1'/><rect x='14' y='14' width='7' height='7' rx='1'/></svg>"
     }
@@ -28,3 +28,5 @@
     ]
   }
 }
+
+
