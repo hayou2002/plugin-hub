@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 const PATCH_STATUS = "patch-status.json";
 const PATCH_LOCK = "patch.lock";
 const PATCH_MARKER = "plugin-hub:drawer-layout-v8";
-const ASAR_VERSION = "3.4.1"; // 锁定已知稳定版本，防供应链攻击
+const ASAR_VERSION = "latest"; // 锁定已知稳定版本，防供应链攻击
 const MAX_BACKUPS = 3;
 
 /* ═══════════════════════════════════════════════════
@@ -279,7 +279,7 @@ function applyPatch(content, search, replace, label) {
   const result = content.replace(search, replace);
   if (result === content) {
     throw new Error(
-      `Patch "${label}" did not match any code. ` +
+      `Patch "${label}" 未匹配到任何代码. ` +
       `This version of Hana may have changed the target code. ` +
       `The enhancement patch cannot be applied.`
     );

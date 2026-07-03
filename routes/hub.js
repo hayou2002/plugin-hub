@@ -99,178 +99,88 @@ async function fetchFreshState(base, headers, ctx) {
 }
 
 export default function registerHubRoutes(app, ctx) {
-  /* ── 主页面（骨架秒出，参考 hana-backup 架构）── */
-  app.get("/page", (c) => {
-    try {
-      const hc = c.req.query("hana-css") || "";
-      const th = c.req.query("hana-theme") || "inherit";
-      const token = getToken(c);
-      const pid = ctx.pluginId || "plugin-hub";
-      const base = `/api/plugins/${pid}`;
+  /* -- AI helper install with auto-repair -- */
+  app.post("/api/patch/ai-install", async (c) => {
+    const diag = getDiagnostics(ctx);
+    let installResult = null;
+    let installError = "";
+    let repairAttempts = [];
 
-      // 同步瞬时数据（进程缓存，零 I/O）
-      const initialState = {
-        pages: (_cachedState && _cachedState.pages) || [],
-        widgets: (_cachedState && _cachedState.widgets) || [],
-        prefs: (_cachedState && _cachedState.prefs) || { hiddenTabs: [], hiddenWidgets: [], tabOrder: [] },
-        runtime: getRuntimeStatus(ctx),
-        layout: getCachedLayout(ctx),
-        stale: !_cachedState,
-      };
-
-      const html = `<!DOCTYPE html>
-<html lang="zh">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>插件中心</title>
-${hc ? `<link rel="stylesheet" href="${esc(hc)}">` : ""}
-<style>${CSS_CONTENT}</style>
-</head>
-<body data-hana-theme="${esc(th)}" data-surface="page">
-<main class="wrap">
-  <header class="header">
-    <h1>插件抽屉</h1>
-    <p class="sub">设置哪些插件固定显示在顶栏；低频插件收进原生溢出菜单，保持顶栏清爽。</p>
-    <div id="runtime-notice" class="notice">默认安全模式：不修改 Hana 核心；点击下方按钮后才会安装原生下拉增强补丁。</div>
-    <div class="patch-panel">
-      <strong>原生下拉增强补丁</strong>
-      <div style="display:flex;gap:16px;align-items:center;">
-        <div id="patch-status" style="flex:1;">状态读取中...</div>
-        <div style="border-left:1px dashed var(--line,#ddd);padding-left:16px;font-size:13px;color:var(--muted,#666);">安装失败？复制下方提示词到聊天中，AI 帮你装：<div style="margin-top:4px;padding:6px 10px;background:var(--bg,#f5f5f5);border-radius:4px;font-family:monospace;font-size:12px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" onclick="navigator.clipboard.writeText('请帮我安装 plugin-hub 的增强补丁（抽屉下拉增强）').then(()=>this.textContent='✅ 已复制！')">请帮我安装 plugin-hub 的增强补丁（抽屉下拉增强）</div></div>
-      </div>
-      <div class="patch-actions">
-        <button id="patch-install" class="primary" type="button">安装增强补丁</button>
-        <button id="patch-uninstall" type="button">卸载增强补丁</button>
-      </div>
-    </div>
-    <div class="stats">
-      <div class="stat"><strong id="stat-pages">0/0</strong><span>顶栏标签</span></div>
-      <div class="stat"><strong id="stat-widgets">0/0</strong><span>侧栏面板</span></div>
-    </div>
-  </header>
-  <div class="toolbar">
-    <input id="search" class="search" type="search" placeholder="搜索插件名称或描述...">
-    <button id="new-folder" class="toolbar-btn ghost" type="button">+ 新建文件夹</button>
-    <button id="collect-all" class="toolbar-btn" type="button">全部收进抽屉</button>
-    <button id="restore-all" class="toolbar-btn ghost" type="button">全部置顶</button>
-  </div>
-  <div class="folder-panel">
-    <div class="folder-head"><strong>下拉文件夹</strong><span class="folder-hint">右键文件夹可重命名 / 删除</span></div>
-    <div id="folder-chips" class="folder-chips"></div>
-  </div>
-  <section class="section">
-    <h2 class="section-title">顶栏置顶</h2>
-    <div id="pages-list" class="list"></div>
-  </section>
-  <section class="section">
-    <h2 class="section-title">侧栏面板</h2>
-    <div id="widgets-list" class="list"></div>
-  </section>
-</main>
-<div id="toast"></div>
-<script>
-window.__PLUGIN_HUB__ = {
-  base: ${JSON.stringify(base)},
-  stateUrl: ${JSON.stringify(`${base}/api/state${token ? `?token=${encodeURIComponent(token)}` : ""}`)},
-  prefsUrl: ${JSON.stringify(`${base}/api/prefs${token ? `?token=${encodeURIComponent(token)}` : ""}`)},
-  layoutUrl: ${JSON.stringify(`${base}/api/layout${token ? `?token=${encodeURIComponent(token)}` : ""}`)},
-  patchInstallUrl: ${JSON.stringify(`${base}/api/patch/install${token ? `?token=${encodeURIComponent(token)}` : ""}`)},
-  patchUninstallUrl: ${JSON.stringify(`${base}/api/patch/uninstall${token ? `?token=${encodeURIComponent(token)}` : ""}`)},
-  patchDiagUrl: ${JSON.stringify(`${base}/api/patch/diagnostics${token ? `?token=${encodeURIComponent(token)}` : ""}`)},
-  state: ${JSON.stringify(initialState)}
-};
-</script>
-<script>(function(){window.parent.postMessage({source:"hana-plugin",type:"ready"},"*");})();</script>
-<script>${JS_CONTENT}</script>
-</body>
-</html>`;
-      return c.html(html);
-    } catch (e) {
-      ctx.log?.error?.("[PluginHub] /page ERROR: " + e.message);
-      return c.text("Error: " + e.message, 500);
-    }
-  });
-
-  // 后台预热缓存
-  (function warmCache() {
-    const base = "http://localhost:" + (process.env.PORT || "6806");
-    fetchFreshState(base, {}, ctx);
-  })();
-
-  /* ── 获取插件列表 + 偏好 ── */
-  app.get("/api/state", async (c) => {
-    const token = getToken(c);
-    const base = getBaseUrl(c);
-    const headers = {};
-    const auth = c.req.header("authorization");
-    if (auth) headers["Authorization"] = auth;
-    else if (token) headers["Authorization"] = `Bearer ${token}`;
-
-    try {
-      const [pagesRes, widgetsRes, prefsRes] = await Promise.all([
-        fetch(`${base}/api/plugins/pages`, { headers }).then(r => r.ok ? r.json() : []).catch(() => []),
-        fetch(`${base}/api/plugins/widgets`, { headers }).then(r => r.ok ? r.json() : []).catch(() => []),
-        fetch(`${base}/api/preferences/plugin-ui`, { headers }).then(r => r.ok ? r.json() : {}).catch(() => ({})),
-      ]);
-      const myId = ctx.pluginId || "plugin-hub";
-      const pages = (Array.isArray(pagesRes) ? pagesRes : []).filter(p => p.pluginId !== myId);
-      const widgets = (Array.isArray(widgetsRes) ? widgetsRes : []).filter(w => w.pluginId !== myId);
-      return c.json({ pages, widgets, prefs: prefsRes || {}, runtime: readPatchStatus(ctx), layout: readDrawerLayout(ctx) });
-    } catch (e) {
-      return c.json({ error: e.message, pages: [], widgets: [], prefs: {}, runtime: readPatchStatus(ctx) }, 500);
-    }
-  });
-
-  /* ── 布局 ── */
-  app.get("/api/layout", (c) => c.json(readDrawerLayout(ctx)));
-
-  app.put("/api/layout", async (c) => {
-    try {
-      const body = await c.req.json();
-      const folders = (Array.isArray(body?.folders) ? body.folders : []).map(f => ({
-        id: String(f.id || ""),
-        name: String(f.name || "未命名"),
-        items: Array.isArray(f.items) ? f.items.map(String) : [],
-      })).filter(f => f.id);
-      writeDrawerLayout(ctx, { folders, rootItems: (Array.isArray(body?.rootItems) ? body.rootItems : []).map(String) });
-      return c.json({ ok: true, folders, rootItems: body.rootItems });
-    } catch (e) {
-      return c.json({ error: e.message }, 500);
-    }
-  });
-
-  /* ── 补丁 ── */
-  app.get("/api/patch/status", (c) => c.json(readPatchStatus(ctx)));
-
-  app.post("/api/patch/install", (c) => {
-    try {
-      const result = installEnhancementPatch(ctx);
-      _runtimeCache = null;
-      return c.json(result);
-    } catch (e) {
-      return c.json({ ok: false, error: e.message }, 500);
-    }
-  });
-
-  app.post("/api/patch/uninstall", (c) => {
-    try {
-      const result = uninstallEnhancementPatch(ctx);
-      _runtimeCache = null;
-      return c.json(result);
-    } catch (e) {
-      return c.json({ ok: false, error: e.message }, 500);
-    }
-  });
-
-  /* ── AI agent 兜底安装 ── */
-  app.post("/api/patch/agent-install", async (c) => {
-    try {
-      // 先尝试自动安装
-      const result = installEnhancementPatch(ctx);
-      if (result.ok) {
+    const status = readPatchStatus(ctx);
+    if (status.inconsistent) {
+      repairAttempts.push("\u68c0\u6d4b\u5230\u72b6\u6001\u4e0d\u4e00\u81f4\uff0c\u5c1d\u8bd5\u5148\u5378\u8f7d\u518d\u91cd\u88c5...");
+      try {
+        uninstallEnhancementPatch(ctx);
         _runtimeCache = null;
-        return c.json({ ...result, method: "auto" });
+        repairAttempts.push("\u5378\u8f7d\u6210\u529f\uff0c\u7ee7\u7eed\u5b89\u88c5...");
+      } catch (e) {
+        repairAttempts.push("\u5378\u8f7d\u5931\u8d25: " + e.message);
+      }
+    }
+
+    try {
+      installResult = installEnhancementPatch(ctx);
+      _runtimeCache = null;
+    } catch (e) {
+      installError = e.message || String(e);
+    }
+
+    if (!installResult || !installResult.ok) {
+      if (installError.includes("EBUSY") || installError.includes("EPERM") || installError.includes("access")) {
+        repairAttempts.push("\u68c0\u6d4b\u5230\u6587\u4ef6\u88ab\u5360\u7528\uff0c\u53ef\u80fd Hana \u6b63\u5728\u8fd0\u884c\u3002\u8bf7\u5173\u95ed Hana \u540e\u91cd\u8bd5\u3002");
+      } else if (installError.includes("npx") || installError.includes("npm") || installError.includes("ENOTFOUND")) {
+        repairAttempts.push("\u68c0\u6d4b\u5230\u7f51\u7edc\u95ee\u9898\uff0c\u65e0\u6cd5\u4e0b\u8f7d @electron/asar\u3002\u8bf7\u68c0\u67e5\u7f51\u7edc\u8fde\u63a5\u540e\u91cd\u8bd5\u3002");
+      } else if (installError.includes("app.asar not found")) {
+        repairAttempts.push("\u68c0\u6d4b\u5230 app.asar \u6587\u4ef6\u4e0d\u5b58\u5728\uff0c\u8bf7\u68c0\u67e5 Hana \u5b89\u88c5\u662f\u5426\u5b8c\u6574\u3002");
+      } else if ("\u517c\u5bb9" in installError || "match" in installError) {
+        repairAttempts.push("\u68c0\u6d4b\u5230\u8865\u4e01\u4e0e\u5f53\u524d Hana \u7248\u672c\u4e0d\u517c\u5bb9\u3002\u8bf7\u68c0\u67e5 plugin-hub \u662f\u5426\u6709\u65b0\u7248\u672c\u3002");
+      }
+    }
+
+    const envLines = [
+      "Platform: " + (diag.platform || "?") + " " + (diag.arch || ""),
+      "Node: " + (diag.nodeVersion || "?"),
+      "Electron: " + (diag.electronVersion || "?"),
+      "Asar: " + (diag.appAsarFound ? "Found " + diag.appAsarPath : "Not found"),
+    ];
+    if (diag.findError) envLines.push("Find error: " + diag.findError);
+    if (diag.ctxDataDir) envLines.push("DataDir: " + diag.ctxDataDir);
+    const envSummary = envLines.join("\n");
+
+    if (installResult && installResult.ok) {
+      return c.json({
+        ok: true,
+        installed: true,
+        installResult,
+        envSummary,
+        repairAttempts,
+        aiAnalysis: repairAttempts.length > 0
+          ? "\u81ea\u52a8\u4fee\u590d\u540e\u5b89\u88c5\u6210\u529f\uff0c\u91cd\u542f Hana \u540e\u751f\u6548\u3002"
+          : "\u5b89\u88c5\u6210\u529f\uff0c\u91cd\u542f Hana \u540e\u751f\u6548\u3002",
+      });
+    }
+
+    let aiAnalysis = "";
+    try {
+      const prompt = "\u6211\u662f Hana \u63d2\u4ef6\u62bd\u5c49\uff08plugin-hub\uff09\u7684\u589e\u5f3a\u8865\u4e01\u5b89\u88c5\u52a9\u624b\u3002\u7528\u6237\u5c1d\u8bd5\u5b89\u88c5\u8865\u4e01\u65f6\u9047\u5230\u95ee\u9898\u3002\n\n\u3010\u73af\u5883\u4fe1\u606f\u3011\n" + envSummary + "\n\n\u3010\u5b89\u88c5\u7ed3\u679c\u3011\n\u5b89\u88c5\u5931\u8d25: " + installError + "\n\n\u3010\u81ea\u52a8\u4fee\u590d\u5c1d\u8bd5\u3011\n" + (repairAttempts.length > 0 ? repairAttempts.join("\n") : "\u65e0") + "\n\n\u8bf7\u5206\u6790\u53ef\u80fd\u7684\u539f\u56e0\uff0c\u5e76\u7ed9\u51fa\u5177\u4f53\u7684\u4fee\u590d\u6b65\u9aa4\u3002\u7528\u4e2d\u6587\u56de\u7b54\uff0c\u7b80\u6d01\u660e\u4e86\u3002";
+
+      aiAnalysis = await ctx.sampleText({
+        prompt,
+        maxTokens: 800,
+      });
+    } catch (e) {
+      aiAnalysis = "AI \u5206\u6790\u5931\u8d25: " + e.message;
+    }
+
+    return c.json({
+      ok: false,
+      installed: false,
+      installError,
+      envSummary,
+      repairAttempts,
+      aiAnalysis,
+    });
+  });
       }
       // 自动安装失败，返回错误让前端调用 agent tool
       return c.json({ ok: false, error: result.error || "自动安装失败", needAgent: true, method: "auto" }, 500);

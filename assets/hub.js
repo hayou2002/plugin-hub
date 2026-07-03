@@ -28,14 +28,14 @@ async function saveLayout(){var res=await api(LAYOUT_URL,{method:"PUT",headers:{
 
 async function updatePrefs(prefs){var res=await api(PREFS_URL,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(prefs)});if(!res.ok)throw new Error("HTTP "+res.status);return res.json()}
 
-function patchItemDom(pluginId,visible,type){var item=document.querySelector('.item[data-plugin-id="'+escA(pluginId)+'"]');if(!item)return;if(visible)item.classList.remove("is-hidden");else item.classList.add("is-hidden");var cb=item.querySelector("input[type=checkbox]");if(cb)cb.checked=visible;var st=item.querySelector(".item-status");if(st)st.textContent=type==="tab"?(visible?"椤舵爮":"涓嬫媺"):(visible?"渚ф爮":"闅愯棌")}
+function patchItemDom(pluginId,visible,type){var item=document.querySelector('.item[data-plugin-id="'+escA(pluginId)+'"]');if(!item)return;if(visible)item.classList.remove("is-hidden");else item.classList.add("is-hidden");var cb=item.querySelector("input[type=checkbox]");if(cb)cb.checked=visible;var st=item.querySelector(".item-status");if(st)st.textContent=type==="tab"?(visible?"顶栏":"下拉"):(visible?"侧栏":"隐藏")}
 
 function updateStats(){var vp=(state.pages||[]).filter(function(p){return!(state.prefs.hiddenTabs||[]).includes(p.pluginId)}),vw=(state.widgets||[]).filter(function(w){return!(state.prefs.hiddenWidgets||[]).includes(w.pluginId)});var sp=document.getElementById("stat-pages"),sw=document.getElementById("stat-widgets");if(sp)sp.textContent=vp.length+"/"+(state.pages||[]).length;if(sw)sw.textContent=vw.length+"/"+(state.widgets||[]).length}
 
 var toggleSeq=0;
-async function toggleTab(pluginId,shouldShow){var seq=++toggleSeq,prev=state.prefs.hiddenTabs.slice();if(shouldShow)state.prefs.hiddenTabs=prev.filter(function(id){return id!==pluginId});else{if(!prev.includes(pluginId))state.prefs.hiddenTabs=prev.concat([pluginId])}patchItemDom(pluginId,shouldShow,"tab");updateStats();try{await updatePrefs({hiddenTabs:state.prefs.hiddenTabs});if(seq!==toggleSeq)return;notifyRenderer();showToast(shouldShow?"宸茶涓洪《鏍忕疆椤?:"宸叉敹杩涙娊灞?)}catch(e){if(seq!==toggleSeq)return;state.prefs.hiddenTabs=prev;patchItemDom(pluginId,!shouldShow,"tab");updateStats();showToast("鎿嶄綔澶辫触: "+e.message)}}
+async function toggleTab(pluginId,shouldShow){var seq=++toggleSeq,prev=state.prefs.hiddenTabs.slice();if(shouldShow)state.prefs.hiddenTabs=prev.filter(function(id){return id!==pluginId});else{if(!prev.includes(pluginId))state.prefs.hiddenTabs=prev.concat([pluginId])}patchItemDom(pluginId,shouldShow,"tab");updateStats();try{await updatePrefs({hiddenTabs:state.prefs.hiddenTabs});if(seq!==toggleSeq)return;notifyRenderer();showToast(shouldShow?"已涓洪《鏍忕疆椤?:"已敹杩涙娊灞?)}catch(e){if(seq!==toggleSeq)return;state.prefs.hiddenTabs=prev;patchItemDom(pluginId,!shouldShow,"tab");updateStats();showToast("操作失败: "+e.message)}}
 
-async function toggleWidget(pluginId,shouldShow){var seq=++toggleSeq,prev=state.prefs.hiddenWidgets.slice();if(shouldShow)state.prefs.hiddenWidgets=prev.filter(function(id){return id!==pluginId});else{if(!prev.includes(pluginId))state.prefs.hiddenWidgets=prev.concat([pluginId])}patchItemDom(pluginId,shouldShow,"widget");updateStats();try{await updatePrefs({hiddenWidgets:state.prefs.hiddenWidgets});if(seq!==toggleSeq)return;notifyRenderer();showToast(shouldShow?"宸叉樉绀轰晶鏍忛潰鏉?:"宸查殣钘忎晶鏍忛潰鏉?)}catch(e){if(seq!==toggleSeq)return;state.prefs.hiddenWidgets=prev;patchItemDom(pluginId,!shouldShow,"widget");updateStats();showToast("鎿嶄綔澶辫触: "+e.message)}}
+async function toggleWidget(pluginId,shouldShow){var seq=++toggleSeq,prev=state.prefs.hiddenWidgets.slice();if(shouldShow)state.prefs.hiddenWidgets=prev.filter(function(id){return id!==pluginId});else{if(!prev.includes(pluginId))state.prefs.hiddenWidgets=prev.concat([pluginId])}patchItemDom(pluginId,shouldShow,"widget");updateStats();try{await updatePrefs({hiddenWidgets:state.prefs.hiddenWidgets});if(seq!==toggleSeq)return;notifyRenderer();showToast(shouldShow?"已樉绀轰晶鏍忛潰鏉?:"宸查殣钘忎晶鏍忛潰鏉?)}catch(e){if(seq!==toggleSeq)return;state.prefs.hiddenWidgets=prev;patchItemDom(pluginId,!shouldShow,"widget");updateStats();showToast("操作失败: "+e.message)}}
 
 async function visitPlugin(pluginId){parent.postMessage({type:"navigate-tab",payload:{tab:"plugin:"+pluginId}},location.origin);showToast("姝ｅ湪鎵撳紑...")}
 function notifyRenderer(){parent.postMessage({type:"hana:plugin-ui-refresh"},location.origin)}
@@ -49,7 +49,7 @@ function folderOf(pluginId){var layout=getLayout();for(var i=0;i<layout.folders.
 
 function setPluginFolder(pluginId,folderId){var layout=getLayout();layout.rootItems=(layout.rootItems||[]).filter(function(id){return id!==pluginId});layout.folders.forEach(function(f){f.items=(f.items||[]).filter(function(id){return id!==pluginId})});if(folderId==="root")layout.rootItems.push(pluginId);else{var f=layout.folders.find(function(x){return x.id===folderId});if(f){if(!Array.isArray(f.items))f.items=[];f.items.push(pluginId)}}}
 
-function updateRuntimeNotice(){var el=document.getElementById("runtime-notice"),st=document.getElementById("patch-status"),r=state.runtime||{};if(el){if(r.inconsistent){el.style.borderColor="#c5372a";el.style.color="#c5372a";el.textContent="\u26A0 鐘舵€佷笉涓€鑷达細asar 涓庤褰曚笉绗︺€傚缓璁嵏杞借ˉ涓佸悗閲嶆柊瀹夎銆?}else{el.style.borderColor="";el.style.color="";el.textContent="榛樿瀹夊叏妯″紡锛氭彃浠朵笉浼氳嚜鍔ㄤ慨鏀?Hana锛涘彧鏈夌偣鍑籠u201C瀹夎澧炲己琛ヤ竵\u201D鎵嶄細澶囦唤骞朵慨鏀?app.asar銆?}}if(!st)return;if(r.inconsistent)st.textContent="\u26A0 琛ヤ竵鐘舵€佸紓甯革紙璁板綍涓庡疄闄呬笉涓€鑷达級锛岃鍗歌浇鍚庨噸鏂板畨瑁呫€?;else if(r.error)st.textContent="涓婃瀹夎澶辫触锛?+r.error;else if(r.installed)st.textContent=r.restartRequired?"宸插畨瑁呭寮鸿ˉ涓侊紝閲嶅惎 Hana 鍚庣敓鏁堛€?:"澧炲己琛ヤ竵宸插畨瑁呫€?;else if(r.restoredAt)st.textContent="宸蹭簬 "+r.restoredAt.slice(0,10)+" 鎭㈠澶囦唤锛岄噸鍚?Hana 鍚庣敓鏁堛€?;else if(r.backup)st.textContent="澧炲己琛ヤ竵鏈畨瑁咃紝瀛樺湪鍙敤澶囦唤銆?;else st.textContent="澧炲己琛ヤ竵鏈畨瑁呫€?}
+function updateRuntimeNotice(){var el=document.getElementById("runtime-notice"),st=document.getElementById("patch-status"),r=state.runtime||{};if(el){if(r.inconsistent){el.style.borderColor="#c5372a";el.style.color="#c5372a";el.textContent="\u26A0 鐘舵€佷笉涓€鑷达細asar 涓庤褰曚笉绗︺€傚缓璁嵏杞借ˉ涓佸悗閲嶆柊安装銆?}else{el.style.borderColor="";el.style.color="";el.textContent="榛樿瀹夊叏妯″紡锛氭彃浠朵笉浼氳嚜鍔ㄤ慨鏀?Hana锛涘彧鏈夌偣鍑籠u201C安装澧炲己琛ヤ竵\u201D鎵嶄細澶囦唤骞朵慨鏀?app.asar銆?}}if(!st)return;if(r.inconsistent)st.textContent="\u26A0 琛ヤ竵鐘舵€佸紓甯革紙璁板綍涓庡疄闄呬笉涓€鑷达級锛岃鍗歌浇鍚庨噸鏂板畨瑁呫€?;else if(r.error)st.textContent="涓婃安装澶辫触锛?+r.error;else if(r.installed)st.textContent=r.restartRequired?"已畨瑁呭寮鸿ˉ涓侊紝閲嶅惎 Hana 鍚庣敓鏁堛€?:"澧炲己琛ヤ竵已畨瑁呫€?;else if(r.restoredAt)st.textContent="宸蹭簬 "+r.restoredAt.slice(0,10)+" 鎭㈠澶囦唤锛岄噸鍚?Hana 鍚庣敓鏁堛€?;else if(r.backup)st.textContent="澧炲己琛ヤ竵鏈畨瑁咃紝瀛樺湪鍙敤澶囦唤銆?;else st.textContent="澧炲己琛ヤ竵鏈畨瑁呫€?}
 
 function render(){var pages=state.pages||[],widgets=state.widgets||[],ht=state.prefs.hiddenTabs||[],hw=state.prefs.hiddenWidgets||[];updateStats();renderFolders();renderList("pages-list",pages,ht,"tab");renderList("widgets-list",widgets,hw,"widget");applySearch()}
 
@@ -57,7 +57,7 @@ function renderFolders(){var layout=getLayout(),chips=['<span class="folder-chip
 
 function renderFolderSelect(pluginId){var layout=getLayout(),cur=folderOf(pluginId),h='<select class="folder-select" data-plugin-id="'+escA(pluginId)+'">';h+='<option value="root"'+(cur==="root"?' selected':"")+'>鏍圭洰褰?/option>';layout.folders.forEach(function(f){h+='<option value="'+escA(f.id)+'"'+(cur===f.id?' selected':"")+'>'+escT(f.name)+'</option>'});h+='</select>';return h}
 
-function renderList(cid,items,hiddenList,type){var c=document.getElementById(cid);if(!items.length){c.innerHTML='<div class="msg">鏆傛棤鎻掍欢</div>';return}c.innerHTML=items.map(function(item){var isHidden=hiddenList.includes(item.pluginId),title=getTitle(item),desc=getDesc(item),icon=getIconHtml(item);return'<div class="item'+(isHidden?" is-hidden":"")+'" data-plugin-id="'+escA(item.pluginId)+'" data-search="'+escA((title+" "+desc+" "+item.pluginId).toLowerCase())+'">'+icon+'<div class="item-info"><div class="item-name">'+escT(title)+'</div><div class="item-desc">'+escT(desc)+'</div></div>'+(type==="tab"?renderFolderSelect(item.pluginId):"")+'<span class="item-status">'+(type==="tab"?(isHidden?"涓嬫媺":"椤舵爮"):(isHidden?"闅愯棌":"渚ф爮"))+'</span><label class="switch"><input type="checkbox" '+(isHidden?"":"checked")+' data-plugin-id="'+escA(item.pluginId)+'" data-type="'+type+'"><span class="slider"></span></label></div>'}).join("")}
+function renderList(cid,items,hiddenList,type){var c=document.getElementById(cid);if(!items.length){c.innerHTML='<div class="msg">暂无插件</div>';return}c.innerHTML=items.map(function(item){var isHidden=hiddenList.includes(item.pluginId),title=getTitle(item),desc=getDesc(item),icon=getIconHtml(item);return'<div class="item'+(isHidden?" is-hidden":"")+'" data-plugin-id="'+escA(item.pluginId)+'" data-search="'+escA((title+" "+desc+" "+item.pluginId).toLowerCase())+'">'+icon+'<div class="item-info"><div class="item-name">'+escT(title)+'</div><div class="item-desc">'+escT(desc)+'</div></div>'+(type==="tab"?renderFolderSelect(item.pluginId):"")+'<span class="item-status">'+(type==="tab"?(isHidden?"下拉":"顶栏"):(isHidden?"隐藏":"侧栏"))+'</span><label class="switch"><input type="checkbox" '+(isHidden?"":"checked")+' data-plugin-id="'+escA(item.pluginId)+'" data-type="'+type+'"><span class="slider"></span></label></div>'}).join("")}
 
 function applySearch(){var q=(document.getElementById("search").value||"").trim().toLowerCase();document.querySelectorAll(".item").forEach(function(el){el.style.display=!q||(el.dataset.search||"").indexOf(q)>=0?"":"none"})}
 
@@ -66,27 +66,125 @@ document.addEventListener("change",async function(e){if(e.target.matches(".folde
 document.addEventListener("click",function(e){var info=e.target.closest(".item-info");if(!info)return;var item=info.closest(".item");if(!item)return;visitPlugin(item.dataset.pluginId)});
 document.getElementById("search").addEventListener("input",applySearch);
 
-async function callPatchApi(url,sm,btn){var origText=btn?btn.textContent:"";if(btn){btn.disabled=true;btn.textContent="馃攧 瀹夎涓?.."}showToast("姝ｅ湪瀹夎澧炲己琛ヤ竵锛岃绋嶅€?..");try{var res=await api(url,{method:"POST"});var data=await res.json().catch(function(){return{}});if(!res.ok||data.ok===false)throw new Error(data.error||("HTTP "+res.status));state.runtime=data;updateRuntimeNotice();showToast(sm)}catch(e){var prompt="璇峰府鎴戝畨瑁?plugin-hub 鐨勫寮鸿ˉ涓侊紙鎶藉眽涓嬫媺澧炲己锛?;var msg="瀹夎澶辫触锛?+e.message+"\n\n璇峰鍒朵互涓嬫彁绀鸿瘝鍒拌亰澶╀腑锛孉I 浼氬府浣犲畨瑁咃細\n"+prompt;try{if(navigator.clipboard){navigator.clipboard.writeText(prompt);showToast("鎻愮ず璇嶅凡澶嶅埗锛佽绮樿创鍒拌亰澶╀腑鍙戦€佺粰 AI")}else{promptUser(msg)}}catch(e2){promptUser(msg)}throw e}finally{if(btn){btn.disabled=false;btn.textContent=origText}}}function promptUser(msg){var ta=document.createElement("textarea");ta.value=msg;ta.style.cssText="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:400px;height:150px;z-index:99999;background:white;border:2px solid #4f46e5;border-radius:8px;padding:12px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.3)";document.body.appendChild(ta);ta.select();setTimeout(function(){document.body.removeChild(ta)},5000)}
+async function callPatchApi(url,sm,btn){var origText=btn?btn.textContent:"";if(btn){btn.disabled=true;btn.textContent="馃攧 安装涓?.."}showToast("姝ｅ湪安装澧炲己琛ヤ竵锛岃绋嶅€?..");try{var res=await api(url,{method:"POST"});var data=await res.json().catch(function(){return{}});if(!res.ok||data.ok===false)throw new Error(data.error||("HTTP "+res.status));state.runtime=data;updateRuntimeNotice();showToast(sm)}catch(e){var prompt="璇峰府鎴戝畨瑁?plugin-hub 鐨勫寮鸿ˉ涓侊紙鎶藉眽下拉澧炲己锛?;var msg="安装澶辫触锛?+e.message+"\n\n璇峰鍒朵互涓嬫彁绀鸿瘝鍒拌亰澶╀腑锛孉I 浼氬府浣犲畨瑁咃細\n"+prompt;try{if(navigator.clipboard){navigator.clipboard.writeText(prompt);showToast("鎻愮ず璇嶅凡澶嶅埗锛佽绮樿创鍒拌亰澶╀腑鍙戦€佺粰 AI")}else{promptUser(msg)}}catch(e2){promptUser(msg)}throw e}finally{if(btn){btn.disabled=false;btn.textContent=origText}}}function promptUser(msg){var ta=document.createElement("textarea");ta.value=msg;ta.style.cssText="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:400px;height:150px;z-index:99999;background:white;border:2px solid #4f46e5;border-radius:8px;padding:12px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.3)";document.body.appendChild(ta);ta.select();setTimeout(function(){document.body.removeChild(ta)},5000)}
 
-document.getElementById("patch-install").addEventListener("click",async function(){var btn=this;try{await callPatchApi(PATCH_INSTALL_URL,"澧炲己琛ヤ竵宸插畨瑁咃紝璇烽噸鍚?Hana",btn)}catch(e){showToast("瀹夎澶辫触: "+e.message)}});
-document.getElementById("patch-uninstall").addEventListener("click",async function(){var btn=this;try{await callPatchApi(PATCH_UNINSTALL_URL,"澧炲己琛ヤ竵宸插嵏杞斤紝璇烽噸鍚?Hana",btn)}catch(e){showToast("鍗歌浇澶辫触: "+e.message)}});
-document.getElementById("new-folder").addEventListener("click",async function(){var layout=getLayout(),n=layout.folders.length+1;layout.folders.push({id:"f_"+Date.now().toString(36),name:"鏂版枃浠跺す"+n,items:[]});render();try{await saveLayout();showToast("宸插垱寤烘枃浠跺す")}catch(e){showToast("鍒涘缓澶辫触: "+e.message)}});
+document.getElementById("patch-install").addEventListener("click",async function(){var btn=this;try{await callPatchApi(PATCH_INSTALL_URL,"澧炲己琛ヤ竵已畨瑁咃紝璇烽噸鍚?Hana",btn)}catch(e){showToast("安装澶辫触: "+e.message)}});
+document.getElementById("patch-uninstall").addEventListener("click",async function(){var btn=this;try{await callPatchApi(PATCH_UNINSTALL_URL,"澧炲己琛ヤ竵已嵏杞斤紝璇烽噸鍚?Hana",btn)}catch(e){showToast("鍗歌浇澶辫触: "+e.message)}});
+document.getElementById("new-folder").addEventListener("click",async function(){var layout=getLayout(),n=layout.folders.length+1;layout.folders.push({id:"f_"+Date.now().toString(36),name:"鏂版枃浠跺す"+n,items:[]});render();try{await saveLayout();showToast("已垱寤烘枃浠跺す")}catch(e){showToast("鍒涘缓澶辫触: "+e.message)}});
 
 document.addEventListener("blur",async function(e){if(!e.target.matches(".folder-name-input"))return;var fid=e.target.dataset.folderId,layout=getLayout(),folder=layout.folders.find(function(f){return f.id===fid});if(!folder)return;var next=(e.target.value||"").trim()||"鏈懡鍚?;if(folder.name===next)return;folder.name=next;render();try{await saveLayout();showToast("宸查噸鍛藉悕鏂囦欢澶?)}catch(err){showToast("淇濆瓨澶辫触: "+err.message)}},true);
 
 document.addEventListener("keydown",function(e){if(e.target.matches(".folder-name-input")&&e.key==="Enter")e.target.blur()});
 
-document.addEventListener("click",async function(e){var del=e.target.closest(".folder-delete[data-folder-id]");if(!del)return;e.stopPropagation();var fid=del.dataset.folderId,layout=getLayout(),folder=layout.folders.find(function(f){return f.id===fid});if(!folder)return;layout.rootItems=(layout.rootItems||[]).concat(folder.items||[]);layout.folders=layout.folders.filter(function(f){return f.id!==fid});render();try{await saveLayout();showToast("宸插垹闄ゆ枃浠跺す锛屽唴閮ㄦ彃浠跺凡绉诲埌鏍圭洰褰?)}catch(err){showToast("鍒犻櫎澶辫触: "+err.message)}});
+document.addEventListener("click",async function(e){var del=e.target.closest(".folder-delete[data-folder-id]");if(!del)return;e.stopPropagation();var fid=del.dataset.folderId,layout=getLayout(),folder=layout.folders.find(function(f){return f.id===fid});if(!folder)return;layout.rootItems=(layout.rootItems||[]).concat(folder.items||[]);layout.folders=layout.folders.filter(function(f){return f.id!==fid});render();try{await saveLayout();showToast("已垹闄ゆ枃浠跺す锛屽唴閮ㄦ彃浠跺凡绉诲埌鏍圭洰褰?)}catch(err){showToast("鍒犻櫎澶辫触: "+err.message)}});
 
-document.getElementById("collect-all").addEventListener("click",async function(){var prev=state.prefs.hiddenTabs.slice();state.prefs.hiddenTabs=(state.pages||[]).map(function(p){return p.pluginId});render();try{await updatePrefs({hiddenTabs:state.prefs.hiddenTabs});notifyRenderer();showToast("宸插叏閮ㄦ敹杩涙娊灞?)}catch(e){state.prefs.hiddenTabs=prev;render();showToast("鎿嶄綔澶辫触: "+e.message)}});
+document.getElementById("collect-all").addEventListener("click",async function(){var prev=state.prefs.hiddenTabs.slice();state.prefs.hiddenTabs=(state.pages||[]).map(function(p){return p.pluginId});render();try{await updatePrefs({hiddenTabs:state.prefs.hiddenTabs});notifyRenderer();showToast("已叏閮ㄦ敹杩涙娊灞?)}catch(e){state.prefs.hiddenTabs=prev;render();showToast("操作失败: "+e.message)}});
 
-document.getElementById("restore-all").addEventListener("click",async function(){var prev=state.prefs.hiddenTabs.slice();state.prefs.hiddenTabs=[];render();try{await updatePrefs({hiddenTabs:[]});notifyRenderer();showToast("宸插叏閮ㄨ涓洪《鏍忕疆椤?)}catch(e){state.prefs.hiddenTabs=prev;render();showToast("鎿嶄綔澶辫触: "+e.message)}});
+document.getElementById("restore-all").addEventListener("click",async function(){var prev=state.prefs.hiddenTabs.slice();state.prefs.hiddenTabs=[];render();try{await updatePrefs({hiddenTabs:[]});notifyRenderer();showToast("已叏閮ㄨ涓洪《鏍忕疆椤?)}catch(e){state.prefs.hiddenTabs=prev;render();showToast("操作失败: "+e.message)}});
 
 // init
 (function initView(){getLayout();updateRuntimeNotice();render()})();
 loadState();
 })();
 
-/* ── AI 辅助安装诊断 ── */
-(function(){var ov=null,aiErr=null,diagUrl=(window.__PLUGIN_HUB__||{}).patchDiagUrl||"";function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]})}function toast(m){try{var el=document.getElementById("toast");if(el){el.textContent=m;el.classList.add("show");setTimeout(function(){el.classList.remove("show")},2000)}}catch(e){}}function showAiModal(msg){aiErr=msg;if(ov){ov.classList.add("show");var eb=document.getElementById("ai-err");if(eb)eb.textContent=msg||"未知错误";var rb=document.getElementById("ai-reply");if(rb){rb.style.display="none";rb.textContent=""};var db=document.getElementById("ai-diagnose");if(db){db.disabled=false;db.textContent="🔍 AI 诊断"};return}ov=document.createElement("div");ov.id="ai-overlay";ov.className="show";ov.innerHTML='<div class="ai-modal"><h3>🔧 AI 安装辅助</h3><div class="ai-sub">安装失败时 AI 会自动分析环境并给出修复建议</div><div id="ai-err" class="ai-box">'+(esc(msg)||"")+'</div><div id="ai-reply" class="ai-reply" style="display:none"></div><div class="ai-rows"><button id="ai-copy">📋 复制错误</button><button id="ai-diagnose" class="primary">🔍 AI 诊断</button><button id="ai-close">关闭</button></div></div>';document.body.appendChild(ov);document.getElementById("ai-close").addEventListener("click",function(){ov.classList.remove("show")});document.getElementById("ai-copy").addEventListener("click",function(){var t=(document.getElementById("ai-err")||{}).textContent||"";navigator.clipboard.writeText(t).then(function(){toast("错误信息已复制")}).catch(function(){toast("复制失败")})});document.getElementById("ai-diagnose").addEventListener("click",startDiag);ov.addEventListener("click",function(e){if(e.target===ov)ov.classList.remove("show")})}function startDiag(){var db=document.getElementById("ai-diagnose");if(!db||!diagUrl)return;db.disabled=true;db.textContent="诊断中...";var rb=document.getElementById("ai-reply");if(!rb)return;rb.style.display="block";rb.className="ai-reply loading";rb.textContent="正在收集环境信息...";fetch(diagUrl,{credentials:"include"}).then(function(r){return r.json().catch(function(){return({})})}).then(function(d){var msg="错误信息："+(aiErr||"未知")+"\n\n环境信息：\n- 平台："+(d.platform||"?")+" "+(d.arch||"")+"\n- Node："+(d.nodeVersion||"?")+"\n- Asar："+(d.appAsarFound?"找到: "+(d.appAsarPath||""):"未找到")+"\n\n请帮我分析以上错误并给出修复步骤。";rb.className="ai-reply";rb.textContent=msg+"\n\n正在尝试调用 AI...";fetch("/api/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"include",body:JSON.stringify({model:"default",messages:[{role:"user",content:msg}],stream:false})}).then(function(r){return r.json().catch(function(){return({})})}).then(function(data){var reply=(((data||{}).choices||[{}])[0]||{}).message||{};if(reply.content){rb.textContent=reply.content.substring(0,3000)}else{rb.textContent+="\n\n(AI 暂无响应，请将上方信息复制到助手对话)"}}).catch(function(){rb.textContent+="\n\n(AI 调用失败，请将上方信息复制到助手对话)"})}).catch(function(){rb.className="ai-reply";rb.textContent="无法获取诊断信息，请手动复制错误到助手对话"}).finally(function(){if(db){db.disabled=false;db.textContent="重新诊断"}})}function addAiBtn(){var pp=document.querySelector(".patch-panel .patch-actions");if(!pp||document.getElementById("ai-assist-btn"))return;var btn=document.createElement("button");btn.id="ai-assist-btn";btn.type="button";btn.style.cssText="margin-left:8px;border-color:#6b7280;color:#6b7280";btn.textContent="🤖 AI 辅助";btn.title="安装失败时点击此处打开 AI 诊断";btn.addEventListener("click",function(){showAiModal("请先尝试安装增强补丁，如果失败 AI 将自动分析原因。")});pp.appendChild(btn)}addAiBtn();})();
+/* AI helper */
+(function(){
+var aiInstallUrl=(window.__PLUGIN_HUB__||{}).base+"/api/patch/ai-install";
+var token=new URLSearchParams(location.search).get("token")||"";
 
+function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]})}
+function toast(m){try{var el=document.getElementById("toast");if(el){el.textContent=m;el.classList.add("show");setTimeout(function(){el.classList.remove("show")},2000)}}catch(e){}}
+
+async function aiAutoInstall(){
+  var btn=document.getElementById("ai-assist-btn");
+  if(!btn)return;
+  var orig=btn.textContent;
+  btn.disabled=true;
+  btn.textContent="\u{1F916} \u8bca\u65ad\u5e76\u4fee\u590d...";
+  toast("\u6b63\u5728\u81ea\u52a8\u8bca\u65ad\u3001\u4fee\u590d\u5e76\u5b89\u88c5...");
+  try{
+    var url=aiInstallUrl+(token?"?token="+encodeURIComponent(token):"");
+    var res=await fetch(url,{method:"POST",credentials:"include"});
+    var data=await res.json().catch(function(){return{}});
+    showResultModal(data);
+    if(data.ok){
+      try{var stEl=document.getElementById("patch-status");if(stEl)stEl.textContent="\u589e\u5f3a\u8865\u4e01\u5df2\u5b89\u88c5\uff0c\u91cd\u542f Hana \u540e\u751f\u6548\u3002";}catch(e){}
+      toast("\u589e\u5f3a\u8865\u4e01\u5df2\u5b89\u88c5");
+    }
+  }catch(e){
+    showResultModal({ok:false,installError:e.message});
+  }finally{
+    btn.disabled=false;
+    btn.textContent=orig;
+  }
+}
+
+function showResultModal(data){
+  var ov=document.getElementById("ai-overlay");
+  if(ov)ov.remove();
+  ov=document.createElement("div");
+  ov.id="ai-overlay";
+  ov.className="show";
+
+  var statusHtml=data.ok
+    ?'<div class="ai-status ok">\u2705 '+(data.repairAttempts&&data.repairAttempts.length?"\u81ea\u52a8\u4fee\u590d\u540e\u5b89\u88c5\u6210\u529f":"\u5b89\u88c5\u6210\u529f")+'</div>'
+    :'<div class="ai-status err">\u274C \u5b89\u88c5\u5931\u8d25: '+esc(data.installError||"\u672a\u77e5\u9519\u8bef")+'</div>';
+
+  var repairHtml="";
+  if(data.repairAttempts&&data.repairAttempts.length){
+    repairHtml='<div class="ai-section"><strong>\u{1F527} \u81ea\u52a8\u4fee\u590d</strong></div>'
+      +'<div class="ai-repair-list">'
+      +data.repairAttempts.map(function(r){return'<div class="ai-repair-item">\u2022 '+esc(r)+'</div>'}).join("")
+      +'</div>';
+  }
+
+  var aiHtml=data.aiAnalysis
+    ?'<div class="ai-section"><strong>AI \u5206\u6790</strong></div><div class="ai-reply">'+esc(data.aiAnalysis)+'</div>'
+    :"";
+
+  var envHtml=data.envSummary
+    ?'<details class="ai-details"><summary>\u73af\u5883\u4fe1\u606f</summary><pre class="ai-env">'+esc(data.envSummary)+'</pre></details>'
+    :"";
+
+  ov.innerHTML='<div class="ai-modal ai-modal-wide">'
+    +'<h3>\u{1F916} AI \u8f85\u52a9\u5b89\u88c5</h3>'
+    +statusHtml
+    +repairHtml
+    +aiHtml
+    +envHtml
+    +'<div class="ai-rows">'
+    +'<button id="ai-copy">\u{1F4CB} \u590d\u5236\u62a5\u544a</button>'
+    +(!data.ok?'<button id="ai-retry" class="primary">\u{1F504} \u91cd\u8bd5</button>':"")
+    +'<button id="ai-close">\u5173\u95ed</button>'
+    +'</div></div>';
+  document.body.appendChild(ov);
+
+  document.getElementById("ai-close").addEventListener("click",function(){ov.remove()});
+  var retryBtn=document.getElementById("ai-retry");
+  if(retryBtn)retryBtn.addEventListener("click",function(){ov.remove();aiAutoInstall()});
+  document.getElementById("ai-copy").addEventListener("click",function(){
+    var parts=["\u3010\u63d2\u4ef6\u62bd\u5c49\u5b89\u88c5\u62a5\u544a\u3011"];
+    parts.push(data.ok?"\u72b6\u6001: \u6210\u529f":"\u72b6\u6001: \u5931\u8d25 - "+(data.installError||""));
+    if(data.repairAttempts&&data.repairAttempts.length)parts.push("\n\u81ea\u52a8\u4fee\u590d:\n"+data.repairAttempts.join("\n"));
+    if(data.envSummary)parts.push("\n\u73af\u5883:\n"+data.envSummary);
+    if(data.aiAnalysis)parts.push("\nAI \u5206\u6790:\n"+data.aiAnalysis);
+    navigator.clipboard.writeText(parts.join("\n")).then(function(){toast("\u5df2\u590d\u5236")}).catch(function(){toast("\u590d\u5236\u5931\u8d25")});
+  });
+  ov.addEventListener("click",function(e){if(e.target===ov)ov.remove()});
+}
+
+function addAiBtn(){
+  var pp=document.querySelector(".patch-panel .patch-actions");
+  if(!pp||document.getElementById("ai-assist-btn"))return;
+  var btn=document.createElement("button");
+  btn.id="ai-assist-btn";
+  btn.type="button";
+  btn.className="ghost";
+  btn.style.cssText="margin-left:8px";
+  btn.textContent="\u{1F916} AI \u8f85\u52a9\u5b89\u88c5";
+  btn.title="\u70b9\u51fb\u540e\u81ea\u52a8\u8bca\u65ad\u3001\u4fee\u590d\u5e76\u5b89\u88c5";
+  btn.addEventListener("click",aiAutoInstall);
+  pp.appendChild(btn);
+}
+addAiBtn();
+})();
