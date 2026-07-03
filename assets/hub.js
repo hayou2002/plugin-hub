@@ -125,50 +125,44 @@ function showResultModal(data){
   ov=document.createElement("div");
   ov.id="ai-overlay";
   ov.className="show";
-
   var statusHtml=data.ok
-    ?'<div class="ai-status ok">\u2705 '+(data.repairAttempts&&data.repairAttempts.length?"\u81ea\u52a8\u4fee\u590d\u540e\u5b89\u88c5\u6210\u529f":"\u5b89\u88c5\u6210\u529f")+'</div>'
-    :'<div class="ai-status err">\u274C \u5b89\u88c5\u5931\u8d25: '+esc(data.installError||"\u672a\u77e5\u9519\u8bef")+'</div>';
-
+    ?'<div class="ai-status ok">\u2705 '+(data.repairAttempts&&data.repairAttempts.length?"":'</div>'
+    :'<div class="ai-status err">\u274C '+esc(data.installError||"")+'</div>';
   var repairHtml="";
   if(data.repairAttempts&&data.repairAttempts.length){
-    repairHtml='<div class="ai-section"><strong>\u{1F527} \u81ea\u52a8\u4fee\u590d</strong></div>'
+    repairHtml='<div class="ai-section"><strong>Auto Repair</strong></div>'
       +'<div class="ai-repair-list">'
-      +data.repairAttempts.map(function(r){return'<div class="ai-repair-item">\u2022 '+esc(r)+'</div>'}).join("")
+      +data.repairAttempts.map(function(r){return'<div class="ai-repair-item">- '+esc(r)+'</div>'}).join("")
       +'</div>';
   }
-
   var aiHtml=data.aiAnalysis
-    ?'<div class="ai-section"><strong>AI \u5206\u6790</strong></div><div class="ai-reply">'+esc(data.aiAnalysis)+'</div>'
+    ?'<div class="ai-section"><strong>AI Analysis</strong></div><div class="ai-reply">'+esc(data.aiAnalysis)+'</div>'
     :"";
-
   var envHtml=data.envSummary
-    ?'<details class="ai-details"><summary>\u73af\u5883\u4fe1\u606f</summary><pre class="ai-env">'+esc(data.envSummary)+'</pre></details>'
+    ?'<details class="ai-details"><summary>Environment</summary><pre class="ai-env">'+esc(data.envSummary)+'</pre></details>'
     :"";
-
   ov.innerHTML='<div class="ai-modal ai-modal-wide">'
-    +'<h3>\u{1F916} AI \u8f85\u52a9\u5b89\u88c5</h3>'
+    +'<h3>AI Assistant</h3>'
     +statusHtml
     +repairHtml
     +aiHtml
     +envHtml
     +'<div class="ai-rows">'
-    +'<button id="ai-copy">\u{1F4CB} \u590d\u5236\u62a5\u544a</button>'
-    +(!data.ok?'<button id="ai-retry" class="primary">\u{1F504} \u91cd\u8bd5</button>':"")
-    +'<button id="ai-close">\u5173\u95ed</button>'
+    +'<button id="ai-copy">Copy</button>'
+    +(!data.ok?'<button id="ai-retry" class="primary">Retry</button>':"")
+    +'<button id="ai-close">Close</button>'
     +'</div></div>';
   document.body.appendChild(ov);
-
   document.getElementById("ai-close").addEventListener("click",function(){ov.remove()});
   var retryBtn=document.getElementById("ai-retry");
   if(retryBtn)retryBtn.addEventListener("click",function(){ov.remove();aiAutoInstall()});
   document.getElementById("ai-copy").addEventListener("click",function(){
-    var parts=["\u3010\u63d2\u4ef6\u62bd\u5c49\u5b89\u88c5\u62a5\u544a\u3011"];
-    parts.push(data.ok?"\u72b6\u6001: \u6210\u529f":"\u72b6\u6001: \u5931\u8d25 - "+(data.installError||""));
-    if(data.repairAttempts&&data.repairAttempts.length)parts.push("\n\u81ea\u52a8\u4fee\u590d:\n"+data.repairAttempts.join("\n"));
-    if(data.envSummary)parts.push("\n\u73af\u5883:\n"+data.envSummary);
-    if(data.aiAnalysis)parts.push("\nAI \u5206\u6790:\n"+data.aiAnalysis);
-    navigator.clipboard.writeText(parts.join("\n")).then(function(){toast("\u5df2\u590d\u5236")}).catch(function(){toast("\u590d\u5236\u5931\u8d25")});
+    var parts=["[PluginHub Report]"];
+    parts.push(data.ok?"Status: OK":"Status: FAIL - "+(data.installError||""));
+    if(data.repairAttempts&&data.repairAttempts.length)parts.push("\nRepair:\n"+data.repairAttempts.join("\n"));
+    if(data.envSummary)parts.push("\nEnvironment:\n"+data.envSummary);
+    if(data.aiAnalysis)parts.push("\nAI:\n"+data.aiAnalysis);
+    navigator.clipboard.writeText(parts.join("\n")).then(function(){toast("Copied")}).catch(function(){toast("Copy failed")});
   });
   ov.addEventListener("click",function(e){if(e.target===ov)ov.remove()});
 }
@@ -181,10 +175,10 @@ function addAiBtn(){
   btn.type="button";
   btn.className="ghost";
   btn.style.cssText="margin-left:8px";
-  btn.textContent="\u{1F916} AI \u8f85\u52a9\u5b89\u88c5";
-  btn.title="\u70b9\u51fb\u540e\u81ea\u52a8\u8bca\u65ad\u3001\u4fee\u590d\u5e76\u5b89\u88c5";
+  btn.textContent="AI Install";
+  btn.title="Auto diagnose, repair and install";
   btn.addEventListener("click",aiAutoInstall);
   pp.appendChild(btn);
 }
 addAiBtn();
-})();
+})();)

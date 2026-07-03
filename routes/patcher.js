@@ -159,7 +159,7 @@ function findAppAsar(ctx) {
     ];
     for (const rootKey of regScans) {
       try {
-        const output = execSync(`reg query "${rootKey}" /s /f "Hana" /k 2>nul`, { encoding: "utf8", timeout: 5000, shell: "cmd.exe" });
+        const output = execSync(`reg query "${rootKey}" /s /f "Hana" /k 2>nul`, { encoding: "utf8", timeout: 5000, shell: "cmd.exe", windowsHide: true });
         if (output) {
           const m = output.match(/InstallLocation\\s+REG_SZ\\s+(.+)/i);
           if (m) candidates.push(path.join(m[1].trim(), "resources", "app.asar"));
@@ -167,7 +167,7 @@ function findAppAsar(ctx) {
       } catch {}
     }
     try {
-      const output = execSync("where HanaAgent 2>nul & where Hanako 2>nul", { encoding: "utf8", timeout: 3000, shell: "cmd.exe" });
+      const output = execSync("where HanaAgent 2>nul & where Hanako 2>nul", { encoding: "utf8", timeout: 3000, shell: "cmd.exe" , windowsHide: true});
       if (output && output.trim()) {
         for (const line of output.split("\n").map(s => s.trim()).filter(Boolean)) {
           searchAppAsarInTree(path.dirname(line), candidates, checked, 3);
@@ -237,7 +237,7 @@ function resolveShortcut(lnkPath, candidates, checked) {
   try {
     const safe = String(lnkPath).replace(/'/g, "''");
     const cmd = `powershell -NoProfile -Command "$ws=New-Object -ComObject WScript.Shell;$sc=$ws.CreateShortcut('${safe}');Write-Output $sc.TargetPath" 2>nul`;
-    const output = execSync(cmd, { encoding: "utf8", timeout: 8000, shell: "cmd.exe" });
+    const output = execSync(cmd, { encoding: "utf8", timeout: 8000, shell: "cmd.exe", windowsHide: true });
     const target = (output || "").trim();
     if (target) {
       const targetDir = path.dirname(target);
@@ -252,7 +252,7 @@ function runNpx(args, cwd) {
   const command = `npx --yes @electron/asar@${ASAR_VERSION} ${safeArgs.map(a => `"${a}"`).join(" ")}`;
   const shell = process.platform === "win32" ? (process.env.ComSpec || "cmd.exe") : "/bin/sh";
   try {
-    execSync(command, { cwd: cwd || os.tmpdir(), stdio: "pipe", timeout: 120000, shell });
+    execSync(command, { cwd: cwd || os.tmpdir(), stdio: "pipe", timeout: 120000, shell , windowsHide: true}, windowsHide: true);
   } catch (err) {
     throw new Error(
       `asar ${args[0]} failed (exit code ${err.status}). ` +
@@ -264,7 +264,7 @@ function runNpx(args, cwd) {
 function verifyAsar(packed) {
   try {
     const shell = process.platform === "win32" ? (process.env.ComSpec || "cmd.exe") : "/bin/sh";
-    execSync(`npx --yes @electron/asar@${ASAR_VERSION} list "${String(packed).replace(/"/g, '""')}"`, { stdio: "pipe", timeout: 30000, shell });
+    execSync(`npx --yes @electron/asar@${ASAR_VERSION} list "${String(packed).replace(/"/g, '""')}"`, { stdio: "pipe", timeout: 30000, shell , windowsHide: true}, windowsHide: true);
     return true;
   } catch {
     return false;
@@ -558,4 +558,4 @@ export function uninstallEnhancementPatch(ctx) {
   } finally {
     release();
   }
-}
+, windowsHide: true}

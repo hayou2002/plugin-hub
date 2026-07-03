@@ -181,14 +181,7 @@ export default function registerHubRoutes(app, ctx) {
       aiAnalysis,
     });
   });
-      }
-      // 自动安装失败，返回错误让前端调用 agent tool
-      return c.json({ ok: false, error: result.error || "自动安装失败", needAgent: true, method: "auto" }, 500);
-    } catch (e) {
-      // 自动安装异常，返回错误让前端调用 agent tool
-      return c.json({ ok: false, error: e.message, needAgent: true, method: "auto" }, 500);
-    }
-  });
+
 
   /* ── 环境诊断 ── */
   app.get("/api/patch/diagnostics", (c) => {
