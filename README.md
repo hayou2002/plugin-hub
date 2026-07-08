@@ -1,8 +1,8 @@
 # 插件抽屉（plugin-hub）
 
-Hana 插件抽屉。管理顶栏插件、下拉收纳和文件夹分类。
+Hana 插件抽屉。管理顶栏插件置顶/收纳、文件夹分类。
 
-**性能**：CSS/JS 外部化 + 进程级缓存 + 同步骨架，点击秒开，无转圈。
+**秒开架构**：CSS/JS 外部化 + 进程级缓存 + 同步骨架，点击即开。
 
 ## 安装
 
@@ -10,37 +10,41 @@ Hana 插件抽屉。管理顶栏插件、下拉收纳和文件夹分类。
 2. 打开 Hana → 插件管理
 3. 拖入 zip 安装，重启 Hana
 
-## 架构
+## 用法
+
+- 安装后顶栏出现「抽屉」标签
+- 点击进入管理页，通过开关控制插件显示/隐藏
+- 创建文件夹分类管理下拉插件
+- 点击「安装增强补丁」启用原生下拉增强（悬浮自动展开、文件夹子菜单、点击不置顶）
+
+## 版本结构
 
 ```
 plugin-hub/
-  manifest.json       # full-access, onStartup
-  index.js            # 生命周期
-  README.md
-  assets/
-    hub.css           # CSS 独立文件（模块级常量秒出）
-    hub.js            # JS 独立文件（DOM patching + 序列号防竞态）
+  releases/             ← 历史版本归档
+    v1.3.0/              ← 原始版本
+  manifest.json          ← v1.4.0（最新）
+  index.js
   routes/
-    hub.js            # 骨架路由 + 进程缓存 + API 代理
-    patcher.js        # asar 补丁引擎（版本锁定 + 完整性校验 + 互斥锁）
+    hub.js
+    patcher.js           ← 智能补丁引擎（正则匹配、多平台、自动重试）
+  assets/
+    hub.css
+    hub.js
+  tools/
+    install-patch.js
+  CHANGELOG.md
+  README.md
 ```
 
 ## 安全
 
 - 默认不修改核心，增强补丁需手动确认
-- 补丁安装前自动备份，可随时恢复
-- `@electron/asar` 版本锁定防供应链攻击
-- 打包后完整性校验，损坏即中止
-- 文件锁防并发，`try/finally` 清理
-- SVG icon DOMParser 白名单防 XSS
-
-## 注意事项
-
-- page 插件需 `trust: full-access`
-- 增强补丁修改 `app.asar`，理解风险后操作
-- 异常时点「卸载增强补丁」并重启
+- 安装前自动备份 app.asar，可随时「卸载增强补丁」恢复
+- `@electron/asar` 版本锁定 + 完整性校验 + 互斥文件锁
 
 ## 兼容性
 
 - `minAppVersion`: 0.82.0
-- 动态适配 Hana 版本（自动匹配 ChannelTabBar 文件哈希）
+- 智能适配不同 Hana 版本（正则模糊匹配 ChannelTabBar 代码变化）
+- 支持 Windows / macOS / Linux
