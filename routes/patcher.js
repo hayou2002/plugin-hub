@@ -11,7 +11,7 @@ const ASAR_VERSION = "3.4.1";
 const MAX_BACKUPS = 3;
 
 // Injected into ChannelTabBar component at runtime
-const BRIDGE_SCRIPT = `(function(){try{window.__ph_tgl="ph-tgl";var STYLE=document.createElement("style");STYLE.textContent="#ph-drawer{position:fixed;z-index:99999;display:none}#ph-drawer.open{display:block;inset:0}#ph-drawer .ph-bg{position:absolute;inset:0}#ph-drawer .ph-panel{position:absolute;top:48px;right:12px;min-width:170px;max-width:250px;background:var(--bg-card,#fff);border:1px solid var(--overlay-medium,#ddd);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:4px;max-height:75vh;overflow-y:auto}#ph-drawer .ph-fd{position:relative}#ph-drawer .ph-fb{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border:none;border-radius:4px;background:none;color:var(--text,#333);font-size:12px;cursor:pointer;width:100%;text-align:left;font-weight:500}#ph-drawer .ph-fb:hover{background:var(--overlay-light,#eee)}#ph-drawer .ph-sm{display:none;position:absolute;left:calc(100% + 4px);top:0;min-width:140px;background:var(--bg-card,#fff);border:1px solid var(--overlay-medium,#ddd);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.12);padding:4px;z-index:10}#ph-drawer .ph-fd:hover>.ph-sm{display:block}#ph-drawer .ph-tb{display:block;width:100%;padding:6px 10px;border:none;border-radius:4px;background:none;color:var(--text-light,#555);font-size:12px;cursor:pointer;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#ph-drawer .ph-tb:hover{background:var(--overlay-light,#eee);color:var(--text,#111)}#ph-drawer .ph-sep{height:1px;background:var(--overlay-light,#eee);margin:4px 6px}#ph-drawer .ph-empty{color:var(--text-muted,#999);font-size:12px;padding:8px 10px;text-align:center}";document.head.appendChild(STYLE);var _drawer=null;function getState(){try{return JSON.parse(localStorage.getItem("plugin-hub:state-cache")||"{}")}catch(e){return{}}}function getLayout(){try{return JSON.parse(localStorage.getItem("plugin-hub:drawer-layout")||"{\"folders\":[],\"rootItems\":[]}")}catch(e){return{folders:[],rootItems:[]}}}function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}function getTitle(p){if(typeof p.title==="string")return p.title;if(p.title&&typeof p.title==="object")return p.title.zh||p.title.en||p.pluginId||"";return p.pluginId||""}function buildHTML(){var st=getState(),layout=getLayout(),pages=st.pages||[],hidden=st.prefs&&st.prefs.hiddenTabs||[];var tabs=[];for(var i=0;i<pages.length;i++){if(hidden.indexOf(pages[i].pluginId)>=0)tabs.push({id:"plugin:"+pages[i].pluginId,label:getTitle(pages[i]),pid:pages[i].pluginId})}var folders=[],ungrouped=[],inF={};if(layout.folders)for(var a=0;a<layout.folders.length;a++){var f=layout.folders[a],ft=[];if(f.items)for(var b=0;b<f.items.length;b++){for(var c=0;c<tabs.length;c++){if(tabs[c].pid===f.items[b]||tabs[c].id==="plugin:"+f.items[b]){ft.push(tabs[c]);break}}}if(ft.length>0)folders.push({id:f.id,name:f.name,tabs:ft})}for(var d=0;d<folders.length;d++)for(var e=0;e<folders[d].tabs.length;e++)inF[folders[d].tabs[e].id]=true;for(var g=0;g<tabs.length;g++)if(!inF[tabs[g].id])ungrouped.push(tabs[g]);var h="";for(var j=0;j<folders.length;j++){var ff=folders[j];h+='<div class="ph-fd"><div class="ph-fb">\ud83d\udcc1 '+esc(ff.name)+" \u203a</div><div class=\"ph-sm\">";for(var k=0;k<ff.tabs.length;k++)h+='<button class="ph-tb" data-id="'+ff.tabs[k].id+'">'+esc(ff.tabs[k].label)+"</button>";h+="</div></div>"}if(folders.length>0&&ungrouped.length>0)h+='<div class="ph-sep"></div>';for(var l=0;l<ungrouped.length;l++)h+='<button class="ph-tb" data-id="'+ungrouped[l].id+'">'+esc(ungrouped[l].label)+"</button>";if(tabs.length===0)h='<div class="ph-empty">No hidden tabs</div>';return h}function ensureDrawer(){if(_drawer)return;_drawer=document.createElement("div");_drawer.id="ph-drawer";_drawer.innerHTML='<div class="ph-bg"></div><div class="ph-panel"><div class="ph-list"></div></div>';document.body.appendChild(_drawer);_drawer.querySelector(".ph-bg").addEventListener("click",function(){_drawer.classList.remove("open");var pid=tabId.replace("plugin:","");var t=document.querySelector('[data-tab="'+tabId+'"]');if(t){t.click()}else{var ov=document.querySelector("[class*=overflowBtn]");if(ov){ov.click();setTimeout(function(){var t2=document.querySelector('[data-tab="'+tabId+'"]');if(t2)t2.click()},150)}};setTimeout(function(){var st=JSON.parse(localStorage.getItem("plugin-hub:state-cache")||"{}");var ht=st.prefs&&st.prefs.hiddenTabs||[];if(ht.indexOf(pid)<0)ht.push(pid);fetch("/api/plugins/plugin-hub/api/prefs",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({hiddenTabs:ht})}).then(function(){try{var cache=JSON.parse(localStorage.getItem("plugin-hub:state-cache")||"{}");if(!cache.prefs)cache.prefs={};cache.prefs.hiddenTabs=ht;localStorage.setItem("plugin-hub:state-cache",JSON.stringify(cache))}catch(e){}})},300)})}function toggleDrawer(){ensureDrawer();if(_drawer.classList.contains("open")){_drawer.classList.remove("open");return}_drawer.querySelector(".ph-list").innerHTML=buildHTML();_drawer.classList.add("open")}function hookButtons(){var btns=document.querySelectorAll("button");for(var i=0;i<btns.length;i++){var b=btns[i];if(b.__ph)continue;if(!b.querySelector('polyline[points="6 9 12 15 18 9"]'))continue;b.__ph=1;b.addEventListener("mouseenter",function(){clearTimeout(b._phT);b._phT=setTimeout(toggleDrawer,120)},false);b.addEventListener("mouseleave",function(){clearTimeout(b._phT);b._phT=setTimeout(function(){if(_drawer&&!_drawer._phHover)_drawer.classList.remove("open")},300)},false);b.addEventListener("click",function(e){e.stopPropagation();e.stopImmediatePropagation();toggleDrawer()},true)}}function boot(){hookButtons();new MutationObserver(hookButtons).observe(document.body,{childList:true,subtree:true})}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot()}catch(err){console.error("[plugin-hub] bridge error:",err)}})()`;
+const BRIDGE_SCRIPT = `(function(){try{window.__ph_tgl="ph-tgl";var STYLE=document.createElement("style");STYLE.textContent="#ph-drawer{position:fixed;z-index:99999;display:none}#ph-drawer.open{display:block;inset:0}#ph-drawer .ph-bg{position:absolute;inset:0}#ph-drawer .ph-panel{position:absolute;top:48px;right:12px;min-width:170px;max-width:250px;background:var(--bg-card,#fff);border:1px solid var(--overlay-medium,#ddd);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:4px;max-height:75vh;overflow-y:auto}#ph-drawer .ph-fd{position:relative}#ph-drawer .ph-fb{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border:none;border-radius:4px;background:none;color:var(--text,#333);font-size:12px;cursor:pointer;width:100%;text-align:left;font-weight:500}#ph-drawer .ph-fb:hover{background:var(--overlay-light,#eee)}#ph-drawer .ph-sm{display:none;position:absolute;left:calc(100% + 4px);top:0;min-width:140px;background:var(--bg-card,#fff);border:1px solid var(--overlay-medium,#ddd);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.12);padding:4px;z-index:10}#ph-drawer .ph-fd:hover>.ph-sm{display:block}#ph-drawer .ph-tb{display:block;width:100%;padding:6px 10px;border:none;border-radius:4px;background:none;color:var(--text-light,#555);font-size:12px;cursor:pointer;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#ph-drawer .ph-tb:hover{background:var(--overlay-light,#eee);color:var(--text,#111)}#ph-drawer .ph-sep{height:1px;background:var(--overlay-light,#eee);margin:4px 6px}#ph-drawer .ph-empty{color:var(--text-muted,#999);font-size:12px;padding:8px 10px;text-align:center}";document.head.appendChild(STYLE);var _drawer=null;function getState(){try{return JSON.parse(localStorage.getItem("plugin-hub:state-cache")||"{}")}catch(e){return{}}}function getLayout(){try{return JSON.parse(localStorage.getItem("plugin-hub:drawer-layout")||"{\"folders\":[],\"rootItems\":[]}")}catch(e){return{folders:[],rootItems:[]}}}function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}function getTitle(p){if(typeof p.title==="string")return p.title;if(p.title&&typeof p.title==="object")return p.title.zh||p.title.en||p.pluginId||"";return p.pluginId||""}function buildHTML(){var st=getState(),layout=getLayout(),pages=st.pages||[],hidden=st.prefs&&st.prefs.hiddenTabs||[];var tabs=[];for(var i=0;i<pages.length;i++){if(hidden.indexOf(pages[i].pluginId)>=0)tabs.push({id:"plugin:"+pages[i].pluginId,label:getTitle(pages[i]),pid:pages[i].pluginId})}var folders=[],ungrouped=[],inF={};if(layout.folders)for(var a=0;a<layout.folders.length;a++){var f=layout.folders[a],ft=[];if(f.items)for(var b=0;b<f.items.length;b++){for(var c=0;c<tabs.length;c++){if(tabs[c].pid===f.items[b]||tabs[c].id==="plugin:"+f.items[b]){ft.push(tabs[c]);break}}}if(ft.length>0)folders.push({id:f.id,name:f.name,tabs:ft})}for(var d=0;d<folders.length;d++)for(var e=0;e<folders[d].tabs.length;e++)inF[folders[d].tabs[e].id]=true;for(var g=0;g<tabs.length;g++)if(!inF[tabs[g].id])ungrouped.push(tabs[g]);var h="";for(var j=0;j<folders.length;j++){var ff=folders[j];h+='<div class="ph-fd"><div class="ph-fb">\ud83d\udcc1 '+esc(ff.name)+" \u203a</div><div class=\"ph-sm\">";for(var k=0;k<ff.tabs.length;k++)h+='<button class="ph-tb" data-id="'+ff.tabs[k].id+'">'+esc(ff.tabs[k].label)+"</button>";h+="</div></div>"}if(folders.length>0&&ungrouped.length>0)h+='<div class="ph-sep"></div>';for(var l=0;l<ungrouped.length;l++)h+='<button class="ph-tb" data-id="'+ungrouped[l].id+'">'+esc(ungrouped[l].label)+"</button>";if(tabs.length===0)h='<div class="ph-empty">No hidden tabs</div>';return h}function ensureDrawer(){if(_drawer)return;_drawer=document.createElement("div");_drawer.id="ph-drawer";_drawer.innerHTML='<div class="ph-bg"></div><div class="ph-panel"><div class="ph-list"></div></div>';document.body.appendChild(_drawer);_drawer.querySelector(".ph-bg").addEventListener("click",function(){_drawer.classList.remove("open");var pid=tabId.replace("plugin:","");var t=document.querySelector('[data-tab="'+tabId+'"]');if(t){t.click()}else{var ov=document.querySelector("[class*=overflowBtn]");if(ov){ov.click();setTimeout(function(){var t2=document.querySelector('[data-tab="'+tabId+'"]');if(t2)t2.click()},150)}};setTimeout(function(){var st=JSON.parse(localStorage.getItem("plugin-hub:state-cache")||"{}");var ht=st.prefs&&st.prefs.hiddenTabs||[];if(ht.indexOf(pid)<0)ht.push(pid);fetch("/api/plugins/plugin-hub/api/prefs",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({hiddenTabs:ht})}).then(function(){try{var cache=JSON.parse(localStorage.getItem("plugin-hub:state-cache")||"{}");if(!cache.prefs)cache.prefs={};cache.prefs.hiddenTabs=ht;localStorage.setItem("plugin-hub:state-cache",JSON.stringify(cache))}catch(e){}})},300)})}function toggleDrawer(){ensureDrawer();if(_drawer.classList.contains("open")){_drawer.classList.remove("open");return}_drawer.querySelector(".ph-list").innerHTML=buildHTML();_drawer.classList.add("open")}function hookButtons(){var btns=document.querySelectorAll("button");for(var i=0;i<btns.length;i++){var b=btns[i];if(b.__ph)continue;if(!b.querySelector('polyline[points="6 9 12 15 18 9"]'))continue;b.__ph=1;b.style.display="none";b.addEventListener("mouseenter",function(){clearTimeout(b._phT);b._phT=setTimeout(toggleDrawer,120)},false);b.addEventListener("mouseleave",function(){clearTimeout(b._phT);b._phT=setTimeout(function(){if(_drawer&&!_drawer._phHover)_drawer.classList.remove("open")},300)},false);b.addEventListener("click",function(e){e.stopPropagation();e.stopImmediatePropagation();toggleDrawer()},true)}}function boot(){hookButtons();new MutationObserver(hookButtons).observe(document.body,{childList:true,subtree:true})}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot()}catch(err){console.error("[plugin-hub] bridge error:",err)}})()`;
 
 // ---- Path Helpers ----
 
@@ -243,7 +243,21 @@ function cleanupOldBackups(dir, prefix, ctx) {
 
 export function patchChannelBundle(file, ctx) {
   let content = fs.readFileSync(file, "utf-8");
-  if (content.includes(PATCH_MARKER)) {
+  
+  // Force mode: 移除旧注入后再注入新的
+  if (ctx._phForce && content.includes(PATCH_MARKER)) {
+    const markerStart = content.indexOf(`/* ${PATCH_MARKER}:`);
+    if (markerStart >= 0) {
+      const iifeEnd = content.indexOf("})()", markerStart);
+      if (iifeEnd >= 0) {
+        const oldBlock = content.substring(markerStart, iifeEnd + 5);
+        content = content.replace(oldBlock, "");
+        log(ctx, "info", `Removed old patch from ${path.basename(file)}`);
+      }
+    }
+  }
+  
+  if (content.includes(PATCH_MARKER) && !ctx._phForce) {
     log(ctx, "info", `Already patched: ${path.basename(file)}`);
     return { patched: false, alreadyPatched: true };
   }
@@ -287,18 +301,20 @@ function patchAsarFlow(ctx, workDir) {
   if (!appAsar) throw new Error("app.asar not found.");
   const resDir = path.dirname(appAsar);
 
-  // Quick pre-check via asar list
-  const checkDir = path.join(workDir, "_check");
-  fs.mkdirSync(checkDir, { recursive: true });
-  try {
-    const listing = runNpx("@electron/asar", `list "${appAsar}"`).toString();
-    if (listing.includes(PATCH_MARKER)) {
-      fs.rmSync(workDir, { recursive: true, force: true });
-      log(ctx, "info", "Asar already contains patch marker. Skipping.");
-      return { ok: true, installed: true, alreadyPatched: true, appAsar };
+  // Quick pre-check via asar list (skip in force mode)
+  if (!ctx._phForce) {
+    const checkDir = path.join(workDir, "_check");
+    fs.mkdirSync(checkDir, { recursive: true });
+    try {
+      const listing = runNpx("@electron/asar", `list "${appAsar}"`).toString();
+      if (listing.includes(PATCH_MARKER)) {
+        fs.rmSync(workDir, { recursive: true, force: true });
+        log(ctx, "info", "Asar already contains patch marker. Skipping.");
+        return { ok: true, installed: true, alreadyPatched: true, appAsar };
+      }
+    } finally {
+      fs.rmSync(checkDir, { recursive: true, force: true });
     }
-  } finally {
-    fs.rmSync(checkDir, { recursive: true, force: true });
   }
 
   // Backup
@@ -349,14 +365,16 @@ function patchRendererTgzFlow(ctx, workDir) {
   if (!rendererTgz) throw new Error("renderer.tar.gz not found.");
   if (!hasTarCommand()) throw new Error("tar command is required but not available.");
 
-  // Quick pre-check
-  try {
-    const listing = execTar(`-tzf "${rendererTgz}"`, process.cwd()).toString();
-    if (listing.includes(PATCH_MARKER)) {
-      log(ctx, "info", "Renderer tgz already contains patch marker. Skipping.");
-      return { ok: true, installed: true, alreadyPatched: true, rendererTgz };
-    }
-  } catch {}
+  // Quick pre-check (skip in force mode)
+  if (!ctx._phForce) {
+    try {
+      const listing = execTar(`-tzf "${rendererTgz}"`, process.cwd()).toString();
+      if (listing.includes(PATCH_MARKER)) {
+        log(ctx, "info", "Renderer tgz already contains patch marker. Skipping.");
+        return { ok: true, installed: true, alreadyPatched: true, rendererTgz };
+      }
+    } catch {}
+  }
 
   const resDir = path.dirname(rendererTgz);
   const backup = path.join(resDir, `renderer.bak-dh-${Date.now()}.tar.gz`);
@@ -441,6 +459,38 @@ function uninstallTgzPatch(ctx, status) {
 
 // ---- Public API ----
 
+/** 找到 artifacts/renderer 里最新版本解压目录 */
+function findExtractedRendererDir(ctx) {
+  if (!ctx?.dataDir) return null;
+  try {
+    const hanaDir = path.dirname(path.dirname(ctx.dataDir)); // .hanako/
+    const artifactsDir = path.join(hanaDir, "artifacts", "renderer");
+    if (!fs.existsSync(artifactsDir)) return null;
+    const versions = fs.readdirSync(artifactsDir)
+      .filter(f => /^\d+\./.test(f))
+      .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+    if (versions.length === 0) return null;
+    return { dir: path.join(artifactsDir, versions[0]), version: versions[0] };
+  } catch { return null; }
+}
+
+/** 直接打 artifacts/renderer 解压版（无需 tar.gz 流程） */
+function patchExtractedRenderer(ctx, extracted) {
+  const assetsDir = path.join(extracted.dir, "assets");
+  if (!fs.existsSync(assetsDir)) return;
+  const channelJs = findChannelFiles(assetsDir, ".js");
+  if (channelJs.length > 0) {
+    patchChannelBundle(path.join(assetsDir, channelJs[0]), ctx);
+  }
+  const channelCss = findChannelFiles(assetsDir, ".css");
+  if (channelCss.length > 0) {
+    patchChannelCss(path.join(assetsDir, channelCss[0]), ctx);
+  }
+  log(ctx, "info", `Patched extracted renderer ${extracted.version}`);
+}
+
+// ---- Public API ----
+
 export function installEnhancementPatch(ctx) {
   const unlock = acquireLock(ctx);
   const workDir = path.join(os.tmpdir(), `ph-patch-${Date.now()}`);
@@ -451,6 +501,11 @@ export function installEnhancementPatch(ctx) {
       result = patchAsarFlow(ctx, workDir);
     } else {
       result = patchRendererTgzFlow(ctx, workDir);
+    }
+    // 同步打 artifacts/renderer 解压版（Hana 实际从这里加载）
+    const extracted = findExtractedRendererDir(ctx);
+    if (extracted) {
+      patchExtractedRenderer(ctx, extracted);
     }
     return result;
   } finally {
