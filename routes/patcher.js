@@ -459,38 +459,6 @@ function uninstallTgzPatch(ctx, status) {
 
 // ---- Public API ----
 
-/** 找到 artifacts/renderer 里最新版本解压目录 */
-function findExtractedRendererDir(ctx) {
-  if (!ctx?.dataDir) return null;
-  try {
-    const hanaDir = path.dirname(path.dirname(ctx.dataDir)); // .hanako/
-    const artifactsDir = path.join(hanaDir, "artifacts", "renderer");
-    if (!fs.existsSync(artifactsDir)) return null;
-    const versions = fs.readdirSync(artifactsDir)
-      .filter(f => /^\d+\./.test(f))
-      .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
-    if (versions.length === 0) return null;
-    return { dir: path.join(artifactsDir, versions[0]), version: versions[0] };
-  } catch { return null; }
-}
-
-/** 直接打 artifacts/renderer 解压版（无需 tar.gz 流程） */
-function patchExtractedRenderer(ctx, extracted) {
-  const assetsDir = path.join(extracted.dir, "assets");
-  if (!fs.existsSync(assetsDir)) return;
-  const channelJs = findChannelFiles(assetsDir, ".js");
-  if (channelJs.length > 0) {
-    patchChannelBundle(path.join(assetsDir, channelJs[0]), ctx);
-  }
-  const channelCss = findChannelFiles(assetsDir, ".css");
-  if (channelCss.length > 0) {
-    patchChannelCss(path.join(assetsDir, channelCss[0]), ctx);
-  }
-  log(ctx, "info", `Patched extracted renderer ${extracted.version}`);
-}
-
-// ---- Public API ----
-
 export function installEnhancementPatch(ctx) {
   const unlock = acquireLock(ctx);
   const workDir = path.join(os.tmpdir(), `ph-patch-${Date.now()}`);
@@ -502,10 +470,18 @@ export function installEnhancementPatch(ctx) {
     } else {
       result = patchRendererTgzFlow(ctx, workDir);
     }
-    // 同步打 artifacts/renderer 解压版（Hana 实际从这里加载）
-    const extracted = findExtractedRendererDir(ctx);
-    if (extracted) {
-      patchExtractedRenderer(ctx, extracted);
+    // 删掉 artifacts/renderer 缓存，让 Hana 从 seed 重新解压（避免 SHA256 校验失败）
+    if (result && result.ok) {
+      try {
+        const hanaDir = path.dirname(path.dirname(ctx.dataDir));
+        const cacheDir = path.join(hanaDir, "artifacts", "renderer");
+        if (fs.existsSync(cacheDir)) {
+          fs.rmSync(cacheDir, { recursive: true, force: true });
+          log(ctx, "info", "Cleared renderer cache, Hana will re-extract from seed on restart.");
+        }
+      } catch (e) {
+        log(ctx, "warn", "Failed to clear renderer cache: " + e.message);
+      }
     }
     return result;
   } finally {
