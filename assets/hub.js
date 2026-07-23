@@ -148,8 +148,7 @@ document.addEventListener("click",function(e){
   if(t.closest("#theme-btn")){var pop=document.getElementById("theme-pop"),btn=document.getElementById("theme-btn");if(pop&&btn){var isOpen=pop.classList.contains("open");pop.classList.toggle("open");btn.classList.toggle("active",!isOpen)}return}
   // Theme card click
   var tc=t.closest(".theme-card[data-theme-id]");if(tc){setTheme(tc.dataset.themeId);renderThemePicker();toast("\u5df2\u5207\u6362\u4e3b\u9898");return}
-  // Hide overflow button
-  if(t.closest("#hide-ov-btn")){toast("\u6b63\u5728\u5b89\u88c5\u8865\u4e01...");api(C.layoutUrl,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({_patchOverflow:true})}).then(function(r){return r.json()}).then(function(d){if(d.ok||d._patched)toast("\u8865\u4e01\u5df2\u66f4\u65b0\uff0c\u91cd\u542f Hana \u540e \u25bc \u6d88\u5931");else toast("\u5931\u8d25: "+(d.error||JSON.stringify(d)))}).catch(function(e){toast("\u8bf7\u6c42\u5931\u8d25")});return}
+
 });
 
 // Click outside theme popup to close
@@ -160,7 +159,6 @@ document.addEventListener("keydown",function(e){if(e.target.matches(".folder-ren
 document.getElementById("search").addEventListener("input",function(){var q=(this.value||"").trim().toLowerCase();if(mode==="manage"){applySearch()}else{document.querySelectorAll(".pc").forEach(function(el){var nm=el.querySelector(".nm");var txt=nm?nm.textContent.toLowerCase():"";el.style.display=!q||txt.indexOf(q)>=0?"":"none"})}});
 
 (function(){getLayout();applyTheme(getTheme());renderThemePicker();render()})();
-// Add hide-overflow button to management bar
-(function(){var bar=document.querySelector("#mgmt-view .mgmt-bar");if(bar&&!document.getElementById("hide-ov-btn")){var btn=document.createElement("button");btn.id="hide-ov-btn";btn.className="hide-ov-btn";btn.textContent="\u9690\u85cf\u25bc";btn.title="\u91cd\u6253\u8865\u4e01\u540e\u91cd\u542f\uff0c\u9876\u680f\u25bc\u6309\u94ae\u6c38\u4e45\u6d88\u5931";bar.appendChild(btn)}})();
+
 loadState();
 })();

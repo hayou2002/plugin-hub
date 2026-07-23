@@ -1,18 +1,25 @@
 {
   "manifestVersion": 1,
   "id": "plugin-hub",
-  "name": "\u63d2\u4ef6\u62bd\u5c49",
-  "version": "1.5.1",
-  "description": "\u7ba1\u7406\u9876\u680f\u63d2\u4ef6\u663e\u793a\u4e0e\u6536\u7eb3\u3002\u62bd\u5c49\u6d4f\u89c8\uff08\u6309\u6587\u4ef6\u5939\u5206\u7c7b\u3001\u70b9\u51fb\u6253\u5f00\uff09+ \u7ba1\u7406\uff08\u663e\u9690\u5f00\u5173\u3001\u6587\u4ef6\u5939\u7ba1\u7406\u3001\u6279\u91cf\u64cd\u4f5c\uff09\u3002",
+  "name": "插件抽屉",
+  "version": "1.6.0",
+  "description": "管理顶栏插件显示与收纳。抽屉浏览（按文件夹分类、点击打开）+ 管理（显隐开关、文件夹管理、批量操作）。安全版：插件启动时自动隐藏顶栏 ▼ 按钮，不修改 renderer 种子文件。",
   "trust": "full-access",
   "minAppVersion": "0.82.0",
-  "activationEvents": ["onStartup"],
+  "activationEvents": [
+    "onStartup"
+  ],
   "ui": {
-    "hostCapabilities": ["toast.show"]
+    "hostCapabilities": [
+      "toast.show"
+    ]
   },
   "contributes": {
     "page": {
-      "title": { "zh": "\u62bd\u5c49", "en": "Drawer" },
+      "title": {
+        "zh": "抽屉",
+        "en": "Drawer"
+      },
       "route": "/page",
       "icon": "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='3' width='7' height='7' rx='1'/><rect x='14' y='3' width='7' height='7' rx='1'/><rect x='3' y='14' width='7' height='7' rx='1'/><rect x='14' y='14' width='7' height='7' rx='1'/></svg>"
     }
@@ -22,7 +29,9 @@
       {
         "id": "open-page",
         "steps": [
-          { "openSurface": "/page" }
+          {
+            "openSurface": "/page"
+          }
         ]
       }
     ]

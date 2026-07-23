@@ -1,18 +1,20 @@
 /**
- * tools/install-patch.js — AI 智能安装补丁
- * 用户说"安装补丁"时，agent 自动执行 findAppAsar → extract → patch → pack 全流程
+ * tools/install-patch.js — 安装项栏 ▼ 隐藏补丁
+ * 安全版：修改已解压的 renderer CSS 文件，不碰 tar.gz/seed-train.json
+ * 插件每次启动时自动注入，此工具用于手动触发或查看状态
  */
-import { installEnhancementPatch, uninstallEnhancementPatch, readPatchStatus } from "../routes/patcher.js";
+import fs from "node:fs";
+import path from "node:path";
 
 export const name = "install-patch";
-export const description = "安装 HanaAgent 增强补丁（抽屉下拉增强）。自动查找 app.asar 路径、解压、打补丁、重新打包，无需手动操作。安装后需要重启 Hana 生效。";
+export const description = "隐藏 HanaAgent 顶栏的 ▼ 下拉按钮（抽屉收纳后出现的那个按钮）。安全版，不修改 renderer 种子文件，不触发 SHA256 校验。安装后重启 Hana 生效。";
 export const parameters = {
   type: "object",
   properties: {
     action: {
       type: "string",
       enum: ["install", "uninstall", "status"],
-      description: "操作类型：install 安装补丁，uninstall 卸载补丁，status 查看当前状态。默认 install"
+      description: "操作类型：install 安装，uninstall 卸载，status 查看状态。默认 status"
     }
   },
   required: []
@@ -20,8 +22,49 @@ export const parameters = {
 
 export const sessionPermission = {
   kind: "external_side_effect",
-  description: "修改 app.asar 文件（HanaAgent 核心资源包），需要重启生效"
+  description: "修改 artifacts/renderer 目录中的 CSS 文件，不影响种子文件和校验"
 };
+
+const CSS_RULES = [
+  'button[class*="overflow"]{display:none!important}',
+  '[class*="overflowBtn"]{display:none!important}',
+];
+
+function findRendererAssetsDir(ctx) {
+  const dataDir = ctx?.dataDir;
+  if (!dataDir) return null;
+  const hanaDir = path.dirname(path.dirname(dataDir));
+  const rendererDir = path.join(hanaDir, "artifacts", "renderer");
+  if (!fs.existsSync(rendererDir)) return null;
+  const versions = fs.readdirSync(rendererDir)
+    .filter(d => /^\d/.test(d))
+    .sort()
+    .reverse();
+  if (versions.length === 0) return null;
+  const assetsDir = path.join(rendererDir, versions[0], "assets");
+  return fs.existsSync(assetsDir) ? assetsDir : null;
+}
+
+function getCssPath(ctx) {
+  const assetsDir = findRendererAssetsDir(ctx);
+  if (!assetsDir) return null;
+  const files = fs.readdirSync(assetsDir)
+    .filter(f => /^ChannelTabBar-.+\.css$/.test(f))
+    .sort()
+    .reverse();
+  return files.length > 0 ? path.join(assetsDir, files[0]) : null;
+}
+
+function isInjected(ctx) {
+  const cssPath = getCssPath(ctx);
+  if (!cssPath) return false;
+  try {
+    const content = fs.readFileSync(cssPath, "utf-8");
+    return CSS_RULES.some(r => content.includes(r));
+  } catch {
+    return false;
+  }
+}
 
 export async function execute(params, toolCtx) {
   const action = params?.action || "status";
@@ -29,41 +72,74 @@ export async function execute(params, toolCtx) {
 
   try {
     if (action === "status") {
-      const status = readPatchStatus(ctx);
+      const injected = isInjected(ctx);
       return {
-        installed: status.installed,
-        appAsar: status.appAsar,
-        inconsistent: status.inconsistent,
-        error: status.error,
-        note: status.installed
-          ? "增强补丁已安装，如需卸载请执行 action=uninstall"
-          : "增强补丁未安装，执行 action=install 可安装"
+        installed: injected,
+        note: injected
+          ? "▼ 隐藏 CSS 已注入到当前 renderer CSS 文件中"
+          : "▼ 隐藏 CSS 未注入，执行 action=install 可安装"
       };
     }
 
     if (action === "uninstall") {
-      const result = uninstallEnhancementPatch(ctx);
+      const cssPath = getCssPath(ctx);
+      if (!cssPath) {
+        return { ok: false, error: "找不到 renderer CSS 文件" };
+      }
+      let content = fs.readFileSync(cssPath, "utf-8");
+      let removed = false;
+      for (const rule of CSS_RULES) {
+        if (content.includes(rule)) {
+          content = content.replace(rule, "");
+          removed = true;
+        }
+      }
+      if (removed) {
+        // Cleanup empty lines
+        content = content.replace(/\n{3,}/g, "\n\n");
+        fs.writeFileSync(cssPath, content, "utf-8");
+      }
       return {
-        ...result,
-        note: result.ok ? "补丁已卸载，请重启 Hana 生效" : "卸载失败: " + (result.error || "未知错误")
+        ok: true,
+        installed: false,
+        note: removed ? "▼ 隐藏 CSS 已移除" : "之前未安装"
       };
     }
 
-    // install
-    const result = installEnhancementPatch(ctx);
+    // Install: inject CSS into extracted renderer file
+    const cssPath = getCssPath(ctx);
+    if (!cssPath) {
+      return {
+        ok: false,
+        error: "找不到 renderer CSS 文件",
+        note: "请先启动 Hana 一次，让 renderer 缓存生成后再执行安装"
+      };
+    }
+
+    let content = fs.readFileSync(cssPath, "utf-8");
+    let injected = false;
+    for (const rule of CSS_RULES) {
+      if (content.includes(rule)) continue;
+      content += "\n" + rule + "\n";
+      injected = true;
+    }
+    if (injected) {
+      fs.writeFileSync(cssPath, content, "utf-8");
+    }
+
     return {
-      ...result,
-      note: result.ok
-        ? (result.alreadyPatched
-          ? "补丁已安装，无需重复操作"
-          : "补丁安装成功，请重启 Hana 生效。原始文件已备份到: " + (result.backup || "未知"))
-        : "安装失败: " + (result.error || "未知错误")
+      ok: true,
+      installed: true,
+      note: injected
+        ? "▼ 隐藏 CSS 已注入，重启 Hana 后生效（或切换到其他页面再切回来触发重渲染）"
+        : "▼ 隐藏 CSS 已存在，无需重复安装",
+      restartRequired: false // CSS affects renderer on next style recalc
     };
   } catch (e) {
     return {
       ok: false,
       error: e.message,
-      note: "补丁操作失败: " + e.message
+      note: "操作失败: " + e.message
     };
   }
 }

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { installEnhancementPatch, uninstallEnhancementPatch, readPatchStatus } from "./patcher.js";
+
 
 const __fileDir = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.dirname(__fileDir);
@@ -234,23 +234,6 @@ window.__PLUGIN_HUB__ = {
     try {
       const body = await c.req.json();
       
-      /* 检测 _patchOverflow 标记→执行补丁重装 */
-      if (body && body._patchOverflow) {
-        delete body._patchOverflow;
-        ctx._phForce = true;  // 跳过预检查，强制重写补丁
-        const status = readPatchStatus(ctx);
-        if (status.installed) {
-          try { uninstallEnhancementPatch(ctx); } catch (e) {
-            // 备份可能已丢失，忽略卸载失败
-          }
-        }
-        const result = installEnhancementPatch(ctx);
-        delete ctx._phForce;
-        if (!result.ok && !result.alreadyPatched) {
-          return c.json({ ok: false, error: result.error || "patch failed" }, 500);
-        }
-        return c.json({ ok: true, ...result });
-      }
       
       const folders = (Array.isArray(body?.folders) ? body.folders : []).map(f => ({
         id: String(f.id || ""),

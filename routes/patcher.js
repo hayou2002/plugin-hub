@@ -6,12 +6,12 @@ import { execSync } from "node:child_process";
 
 const PATCH_STATUS = "patch-status.json";
 const PATCH_LOCK = "patch.lock";
-const PATCH_MARKER = "ph-tgl";
-const ASAR_VERSION = "3.4.1";
+const PATCH_CSS_MARKER = "/* ph-overflow-hide */";
 const MAX_BACKUPS = 3;
 
-// Injected into ChannelTabBar component at runtime
-const BRIDGE_SCRIPT = `(function(){try{window.__ph_tgl="ph-tgl";var STYLE=document.createElement("style");STYLE.textContent="#ph-drawer{position:fixed;z-index:99999;display:none}#ph-drawer.open{display:block;inset:0}#ph-drawer .ph-bg{position:absolute;inset:0}#ph-drawer .ph-panel{position:absolute;top:48px;right:12px;min-width:170px;max-width:250px;background:var(--bg-card,#fff);border:1px solid var(--overlay-medium,#ddd);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:4px;max-height:75vh;overflow-y:auto}#ph-drawer .ph-fd{position:relative}#ph-drawer .ph-fb{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border:none;border-radius:4px;background:none;color:var(--text,#333);font-size:12px;cursor:pointer;width:100%;text-align:left;font-weight:500}#ph-drawer .ph-fb:hover{background:var(--overlay-light,#eee)}#ph-drawer .ph-sm{display:none;position:absolute;left:calc(100% + 4px);top:0;min-width:140px;background:var(--bg-card,#fff);border:1px solid var(--overlay-medium,#ddd);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.12);padding:4px;z-index:10}#ph-drawer .ph-fd:hover>.ph-sm{display:block}#ph-drawer .ph-tb{display:block;width:100%;padding:6px 10px;border:none;border-radius:4px;background:none;color:var(--text-light,#555);font-size:12px;cursor:pointer;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#ph-drawer .ph-tb:hover{background:var(--overlay-light,#eee);color:var(--text,#111)}#ph-drawer .ph-sep{height:1px;background:var(--overlay-light,#eee);margin:4px 6px}#ph-drawer .ph-empty{color:var(--text-muted,#999);font-size:12px;padding:8px 10px;text-align:center}";document.head.appendChild(STYLE);var _drawer=null;function getState(){try{return JSON.parse(localStorage.getItem("plugin-hub:state-cache")||"{}")}catch(e){return{}}}function getLayout(){try{return JSON.parse(localStorage.getItem("plugin-hub:drawer-layout")||"{\"folders\":[],\"rootItems\":[]}")}catch(e){return{folders:[],rootItems:[]}}}function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}function getTitle(p){if(typeof p.title==="string")return p.title;if(p.title&&typeof p.title==="object")return p.title.zh||p.title.en||p.pluginId||"";return p.pluginId||""}function buildHTML(){var st=getState(),layout=getLayout(),pages=st.pages||[],hidden=st.prefs&&st.prefs.hiddenTabs||[];var tabs=[];for(var i=0;i<pages.length;i++){if(hidden.indexOf(pages[i].pluginId)>=0)tabs.push({id:"plugin:"+pages[i].pluginId,label:getTitle(pages[i]),pid:pages[i].pluginId})}var folders=[],ungrouped=[],inF={};if(layout.folders)for(var a=0;a<layout.folders.length;a++){var f=layout.folders[a],ft=[];if(f.items)for(var b=0;b<f.items.length;b++){for(var c=0;c<tabs.length;c++){if(tabs[c].pid===f.items[b]||tabs[c].id==="plugin:"+f.items[b]){ft.push(tabs[c]);break}}}if(ft.length>0)folders.push({id:f.id,name:f.name,tabs:ft})}for(var d=0;d<folders.length;d++)for(var e=0;e<folders[d].tabs.length;e++)inF[folders[d].tabs[e].id]=true;for(var g=0;g<tabs.length;g++)if(!inF[tabs[g].id])ungrouped.push(tabs[g]);var h="";for(var j=0;j<folders.length;j++){var ff=folders[j];h+='<div class="ph-fd"><div class="ph-fb">\ud83d\udcc1 '+esc(ff.name)+" \u203a</div><div class=\"ph-sm\">";for(var k=0;k<ff.tabs.length;k++)h+='<button class="ph-tb" data-id="'+ff.tabs[k].id+'">'+esc(ff.tabs[k].label)+"</button>";h+="</div></div>"}if(folders.length>0&&ungrouped.length>0)h+='<div class="ph-sep"></div>';for(var l=0;l<ungrouped.length;l++)h+='<button class="ph-tb" data-id="'+ungrouped[l].id+'">'+esc(ungrouped[l].label)+"</button>";if(tabs.length===0)h='<div class="ph-empty">No hidden tabs</div>';return h}function ensureDrawer(){if(_drawer)return;_drawer=document.createElement("div");_drawer.id="ph-drawer";_drawer.innerHTML='<div class="ph-bg"></div><div class="ph-panel"><div class="ph-list"></div></div>';document.body.appendChild(_drawer);_drawer.querySelector(".ph-bg").addEventListener("click",function(){_drawer.classList.remove("open");var pid=tabId.replace("plugin:","");var t=document.querySelector('[data-tab="'+tabId+'"]');if(t){t.click()}else{var ov=document.querySelector("[class*=overflowBtn]");if(ov){ov.click();setTimeout(function(){var t2=document.querySelector('[data-tab="'+tabId+'"]');if(t2)t2.click()},150)}};setTimeout(function(){var st=JSON.parse(localStorage.getItem("plugin-hub:state-cache")||"{}");var ht=st.prefs&&st.prefs.hiddenTabs||[];if(ht.indexOf(pid)<0)ht.push(pid);fetch("/api/plugins/plugin-hub/api/prefs",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({hiddenTabs:ht})}).then(function(){try{var cache=JSON.parse(localStorage.getItem("plugin-hub:state-cache")||"{}");if(!cache.prefs)cache.prefs={};cache.prefs.hiddenTabs=ht;localStorage.setItem("plugin-hub:state-cache",JSON.stringify(cache))}catch(e){}})},300)})}function toggleDrawer(){ensureDrawer();if(_drawer.classList.contains("open")){_drawer.classList.remove("open");return}_drawer.querySelector(".ph-list").innerHTML=buildHTML();_drawer.classList.add("open")}function hookButtons(){var btns=document.querySelectorAll("button");for(var i=0;i<btns.length;i++){var b=btns[i];if(b.__ph)continue;if(!b.querySelector('polyline[points="6 9 12 15 18 9"]'))continue;b.__ph=1;if(typeof b.className==="string"&&b.className.indexOf("overflow")>=0)b.style.display="none";b.addEventListener("mouseenter",function(){clearTimeout(b._phT);b._phT=setTimeout(toggleDrawer,120)},false);b.addEventListener("mouseleave",function(){clearTimeout(b._phT);b._phT=setTimeout(function(){if(_drawer&&!_drawer._phHover)_drawer.classList.remove("open")},300)},false);b.addEventListener("click",function(e){e.stopPropagation();e.stopImmediatePropagation();toggleDrawer()},true)}}function boot(){hookButtons();new MutationObserver(hookButtons).observe(document.body,{childList:true,subtree:true})}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot()}catch(err){console.error("[plugin-hub] bridge error:",err)}})()`;
+// CSS-only: hide overflow ▼ button in ChannelTabBar
+const OVERFLOW_CSS = "button[class*=overflow]{display:none!important}";
+
 
 // ---- Path Helpers ----
 
@@ -241,54 +241,15 @@ function cleanupOldBackups(dir, prefix, ctx) {
 
 // ---- Patch Functions ----
 
-export function patchChannelBundle(file, ctx) {
+export function patchChannelCss(file, ctx) {
   let content = fs.readFileSync(file, "utf-8");
-  
-  // Force mode: 移除旧注入后再注入新的
-  if (ctx._phForce && content.includes(PATCH_MARKER)) {
-    const markerStart = content.indexOf(`/* ${PATCH_MARKER}:`);
-    if (markerStart >= 0) {
-      const iifeEnd = content.indexOf("})()", markerStart);
-      if (iifeEnd >= 0) {
-        const oldBlock = content.substring(markerStart, iifeEnd + 5);
-        content = content.replace(oldBlock, "");
-        log(ctx, "info", `Removed old patch from ${path.basename(file)}`);
-      }
-    }
-  }
-  
-  if (content.includes(PATCH_MARKER) && !ctx._phForce) {
+  // Check if already patched
+  if (content.includes(PATCH_CSS_MARKER)) {
     log(ctx, "info", `Already patched: ${path.basename(file)}`);
     return { patched: false, alreadyPatched: true };
   }
-  const target = "const U=9999;";
-  const idx = content.indexOf(target);
-  if (idx === -1) {
-    log(ctx, "warn", `Target '${target}' not found in ${path.basename(file)}. Appending as fallback.`);
-    const lastBrace = content.lastIndexOf("}");
-    if (lastBrace === -1) throw new Error("Cannot locate insertion point in bundle.");
-    const hash = crypto.createHash("md5").update(BRIDGE_SCRIPT).digest("hex").slice(0, 8);
-    const injected = `\n/* ${PATCH_MARKER}:${hash} */\n${BRIDGE_SCRIPT}\n`;
-    content = content.slice(0, lastBrace) + injected + content.slice(lastBrace);
-  } else {
-    const hash = crypto.createHash("md5").update(BRIDGE_SCRIPT).digest("hex").slice(0, 8);
-    const injected = `${target}\n\n/* ${PATCH_MARKER}:${hash} */\n${BRIDGE_SCRIPT}\n`;
-    content = content.replace(target, injected);
-  }
-  fs.writeFileSync(file, content, "utf-8");
-  log(ctx, "info", `Patched: ${path.basename(file)}`);
-  return { patched: true };
-}
-
-export function patchChannelCss(file, ctx) {
-  const target = "min-width:140px;max-width:200px;";
-  const replacement = "min-width:auto;max-width:none;";
-  let content = fs.readFileSync(file, "utf-8");
-  if (!content.includes(target)) {
-    log(ctx, "info", `CSS target not found (already patched?): ${path.basename(file)}`);
-    return { patched: false, alreadyPatched: true };
-  }
-  content = content.replaceAll(target, replacement);
+  // Append the overflow-hide rule at the end
+  content += "\n" + PATCH_CSS_MARKER + " " + OVERFLOW_CSS + "\n";
   fs.writeFileSync(file, content, "utf-8");
   log(ctx, "info", `CSS patched: ${path.basename(file)}`);
   return { patched: true };
@@ -307,7 +268,7 @@ function patchAsarFlow(ctx, workDir) {
     fs.mkdirSync(checkDir, { recursive: true });
     try {
       const listing = runNpx("@electron/asar", `list "${appAsar}"`).toString();
-      if (listing.includes(PATCH_MARKER)) {
+      if (listing.includes(PATCH_CSS_MARKER)) {
         fs.rmSync(workDir, { recursive: true, force: true });
         log(ctx, "info", "Asar already contains patch marker. Skipping.");
         return { ok: true, installed: true, alreadyPatched: true, appAsar };
@@ -333,13 +294,13 @@ function patchAsarFlow(ctx, workDir) {
   const assetsDir = path.join(extractDir, "dist", "assets");
   if (!fs.existsSync(assetsDir)) throw new Error("dist/assets not found inside app.asar.");
 
-  const channelJs = findChannelFiles(assetsDir, ".js");
-  if (channelJs.length === 0) throw new Error("No channel bundle JS found in dist/assets.");
-  patchChannelBundle(path.join(assetsDir, channelJs[0]), ctx);
-
   const channelCss = findChannelFiles(assetsDir, ".css");
   if (channelCss.length > 0) {
     patchChannelCss(path.join(assetsDir, channelCss[0]), ctx);
+  } else {
+    // Fallback: inject into any CSS file
+    const allCss = findChannelFiles(assetsDir, ".css");
+    if (allCss.length > 0) patchChannelCss(path.join(assetsDir, allCss[0]), ctx);
   }
 
   // Repack
@@ -369,7 +330,7 @@ function patchRendererTgzFlow(ctx, workDir) {
   if (!ctx._phForce) {
     try {
       const listing = execTar(`-tzf "${rendererTgz}"`, process.cwd()).toString();
-      if (listing.includes(PATCH_MARKER)) {
+      if (listing.includes(PATCH_CSS_MARKER)) {
         log(ctx, "info", "Renderer tgz already contains patch marker. Skipping.");
         return { ok: true, installed: true, alreadyPatched: true, rendererTgz };
       }
@@ -391,10 +352,6 @@ function patchRendererTgzFlow(ctx, workDir) {
   // Locate channel bundle
   const assetsDir = path.join(extractDir, "assets");
   if (!fs.existsSync(assetsDir)) throw new Error("assets directory not found inside extracted renderer.");
-
-  const channelJs = findChannelFiles(assetsDir, ".js");
-  if (channelJs.length === 0) throw new Error("No channel bundle JS found in assets.");
-  patchChannelBundle(path.join(assetsDir, channelJs[0]), ctx);
 
   const channelCss = findChannelFiles(assetsDir, ".css");
   if (channelCss.length > 0) {
