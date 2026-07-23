@@ -1,0 +1,39 @@
+{
+  "manifestVersion": 1,
+  "id": "plugin-hub",
+  "name": "插件抽屉",
+  "version": "1.6.0",
+  "description": "管理顶栏插件显示与收纳。抽屉浏览（按文件夹分类、点击打开）+ 管理（显隐开关、文件夹管理、批量操作）。安全版：插件启动时自动隐藏顶栏 ▼ 按钮，不修改 renderer 种子文件。",
+  "trust": "full-access",
+  "minAppVersion": "0.82.0",
+  "activationEvents": [
+    "onStartup"
+  ],
+  "ui": {
+    "hostCapabilities": [
+      "toast.show"
+    ]
+  },
+  "contributes": {
+    "page": {
+      "title": {
+        "zh": "抽屉",
+        "en": "Drawer"
+      },
+      "route": "/page",
+      "icon": "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='3' width='7' height='7' rx='1'/><rect x='14' y='3' width='7' height='7' rx='1'/><rect x='3' y='14' width='7' height='7' rx='1'/><rect x='14' y='14' width='7' height='7' rx='1'/></svg>"
+    }
+  },
+  "dev": {
+    "scenarios": [
+      {
+        "id": "open-page",
+        "steps": [
+          {
+            "openSurface": "/page"
+          }
+        ]
+      }
+    ]
+  }
+}
